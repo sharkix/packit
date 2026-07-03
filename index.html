@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0B3D77">
+<title>Zbalené? · Packed?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>">
+<style>
+/* ============ tokens ============ */
+:root{
+  --sea:#0D4C92;
+  --sea-deep:#082E5B;
+  --sea-dark:#0B3D77;
+  --sky:#E8F1F8;
+  --plaster:#FFFFFF;
+  --paper:#F2F6FA;
+  --sun:#F7C325;
+  --sun-deep:#E0A800;
+  --ink:#12202F;
+  --muted:#5B7186;
+  --line:#D5E1EC;
+  --ok:#1C8A5A;
+  --danger:#B3362B;
+  --radius:16px;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --disp:'Space Grotesk',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--disp);
+  color:var(--ink);
+  background:var(--paper);
+  min-height:100vh;
+}
+
+/* ============ modré nebo hore (mobile-first) ============ */
+.sky{
+  background:
+    radial-gradient(circle 90px at 85% 24px, rgba(247,195,37,.9) 0 46px, rgba(247,195,37,0) 47px),
+    linear-gradient(180deg,var(--sea-dark) 0%, var(--sea) 100%);
+  padding:18px 14px 46px;
+  position:relative;
+}
+.sky .waves{
+  position:absolute;left:0;right:0;bottom:-1px;height:26px;display:block;width:100%;
+}
+.wrap{max-width:820px;margin:0 auto;padding:0 14px 90px}
+.sky .inner{max-width:820px;margin:0 auto}
+
+/* ============ visačka na kufor ============ */
+.tag{
+  background:var(--plaster);
+  border:2px solid var(--sea-deep);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:0 8px 0 rgba(0,0,0,.18);
+  transform:rotate(-.4deg);
+}
+.tag-top{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:14px 16px;
+  background:var(--sea);
+  color:#fff;
+}
+.tag-hole{
+  width:15px;height:15px;border-radius:50%;
+  background:var(--sea-dark);
+  border:3px solid #fff;
+  flex:none;margin-top:6px;
+}
+.tag-head{min-width:0;flex:1}
+.tag-route{font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;opacity:.85;margin-bottom:2px}
+.tag-title{font-size:clamp(1.35rem,6vw,2rem);font-weight:700;line-height:1.08;overflow-wrap:anywhere}
+.tag-dates{font-family:var(--mono);font-size:.78rem;opacity:.9;margin-top:3px}
+.lang{
+  display:flex;flex:none;border:2px solid rgba(255,255,255,.75);border-radius:99px;overflow:hidden;
+}
+.lang button{
+  border:0;background:transparent;color:#fff;
+  font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.05em;
+  padding:6px 10px;cursor:pointer;min-height:32px;
+}
+.lang button.on{background:#fff;color:var(--sea-deep)}
+.tag-perf{border-top:2px dashed var(--sea-deep);position:relative}
+.tag-perf::before,.tag-perf::after{
+  content:"";position:absolute;top:-9px;width:16px;height:16px;border-radius:50%;
+  background:var(--sea);border:2px solid var(--sea-deep);
+}
+.tag-perf::before{left:-10px}
+.tag-perf::after{right:-10px}
+.tag-bottom{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:13px 16px;
+}
+.progress{
+  flex:1;min-width:150px;
+  height:15px;border:2px solid var(--sea-deep);border-radius:99px;
+  background:#fff;overflow:hidden;
+}
+.progress i{
+  display:block;height:100%;width:0%;
+  background:repeating-linear-gradient(45deg,var(--sun) 0 10px,var(--sun-deep) 10px 20px);
+  transition:width .4s cubic-bezier(.2,.8,.3,1);
+}
+.stamp{
+  font-family:var(--mono);font-weight:600;font-size:.8rem;
+  border:2px solid var(--sea-deep);border-radius:8px;
+  padding:5px 10px;transform:rotate(-2deg);
+  color:var(--sea-deep);white-space:nowrap;background:#fff;
+}
+.stamp.done{border-color:var(--ok);color:var(--ok);background:#E9F7F0;animation:stampIn .35s ease}
+@keyframes stampIn{0%{transform:rotate(-2deg) scale(1.6);opacity:0}100%{transform:rotate(-2deg) scale(1);opacity:1}}
+
+/* ============ karty a formulár (mobile-first) ============ */
+main{margin-top:-18px;position:relative;z-index:1}
+.card{
+  background:var(--plaster);
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 16px;
+  margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(8,46,91,.05);
+}
+.card h2{font-size:1.15rem;margin-bottom:4px}
+.card .hint{color:var(--muted);font-size:.88rem;margin-bottom:16px;line-height:1.45}
+.field{margin-bottom:14px}
+label.f{display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=number]{
+  width:100%;padding:13px 14px;font:inherit;font-size:1rem;
+  border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);
+}
+input:focus,button:focus-visible{outline:3px solid rgba(13,76,146,.4);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{
+  border:1.5px solid var(--line);border-radius:99px;
+  padding:11px 15px;background:#fff;cursor:pointer;
+  font:inherit;font-size:.92rem;user-select:none;
+  min-height:44px;
+  transition:background .15s ease,color .15s ease,border-color .15s ease,transform .1s ease;
+}
+.chip:active{transform:scale(.96)}
+.chip.on{background:var(--sea);border-color:var(--sea-deep);color:#fff}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{
+  flex:1;border:0;background:#fff;padding:12px 6px;font:inherit;font-size:.92rem;cursor:pointer;min-height:46px;
+}
+.seg button+button{border-left:1.5px solid var(--line)}
+.seg button.on{background:var(--sea);color:#fff}
+.actions{margin-top:6px}
+.btn{
+  border:2px solid var(--sea-deep);border-radius:12px;
+  background:var(--sun);color:var(--sea-deep);
+  font:inherit;font-weight:700;font-size:1rem;
+  padding:14px 20px;cursor:pointer;
+  box-shadow:0 3px 0 rgba(8,46,91,.3);
+  width:100%;min-height:50px;
+}
+.btn:active{transform:translateY(2px);box-shadow:none}
+.btn.ghost{background:#fff;font-weight:500;box-shadow:none;border-color:var(--line);color:var(--ink);width:auto}
+.btn.small{padding:9px 13px;font-size:.86rem;min-height:40px;width:auto}
+
+/* ============ zoznam ============ */
+.toolbar{
+  display:flex;gap:8px;align-items:center;
+  position:sticky;top:0;z-index:5;
+  background:linear-gradient(180deg,var(--paper) 78%,rgba(242,246,250,0));
+  padding:10px 0 12px;
+  margin-bottom:6px;
+}
+.toolbar .spacer{flex:1}
+.cat{
+  background:var(--plaster);border:1.5px solid var(--line);
+  border-radius:var(--radius);margin-bottom:14px;overflow:hidden;
+  box-shadow:0 2px 8px rgba(8,46,91,.05);
+}
+.cat-head{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 15px;border-bottom:1.5px solid var(--line);
+  background:linear-gradient(0deg,rgba(13,76,146,.06),rgba(13,76,146,.06));
+}
+.cat-head .emoji{font-size:1.2rem}
+.cat-head h3{font-size:1.02rem;flex:1}
+.cat-count{font-family:var(--mono);font-size:.76rem;color:var(--muted)}
+.items{list-style:none}
+.item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 15px;border-bottom:1px solid var(--paper);
+}
+.item:last-child{border-bottom:0}
+.item input[type=checkbox]{
+  appearance:none;width:26px;height:26px;flex:none;
+  border:2px solid var(--sea);border-radius:8px;background:#fff;cursor:pointer;
+  display:grid;place-items:center;
+  transition:background .15s ease,border-color .15s ease;
+}
+.item input[type=checkbox]:checked{background:var(--ok);border-color:var(--ok)}
+.item input[type=checkbox]:checked::after{content:"✓";color:#fff;font-weight:700;font-size:.95rem}
+.item .name{flex:1;font-size:.98rem;line-height:1.32}
+.item .note{display:block;font-size:.78rem;color:var(--muted);margin-top:1px}
+.item.checked .name{text-decoration:line-through;color:var(--muted)}
+.qty{font-family:var(--mono);font-size:.8rem;color:var(--sea-deep);background:var(--sky);border-radius:6px;padding:3px 8px;white-space:nowrap}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.05rem;padding:8px;line-height:1;min-width:36px;min-height:36px}
+.del:hover{color:var(--danger)}
+.add-row{display:flex;gap:8px;padding:10px 12px;background:var(--paper)}
+.add-row input{flex:1;padding:11px 12px}
+.hide-done .item.checked{display:none}
+
+footer{color:var(--muted);font-size:.78rem;text-align:center;margin-top:24px;font-family:var(--mono);line-height:1.6}
+
+/* ============ väčšie obrazovky ============ */
+@media (min-width:640px){
+  .sky{padding:26px 18px 54px}
+  .tag{transform:rotate(-.6deg)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .btn{width:auto}
+  .list-cols{column-count:2;column-gap:16px}
+  .cat{break-inside:avoid}
+}
+
+/* ============ tlač ============ */
+.print-only{display:none}
+@media print{
+  body{background:#fff;font-size:11px}
+  .sky{background:#fff;padding:0}
+  .sky .waves,.lang,.no-print,.toolbar,.add-row,.del{display:none !important}
+  .print-only{display:block}
+  .wrap{max-width:100%;padding:0}
+  main{margin-top:0}
+  .tag{box-shadow:none;border-color:#000;transform:none;margin-bottom:10px}
+  .tag-top{background:#fff;color:#000;border-bottom:2px solid #000;padding:10px 14px}
+  .tag-hole{display:none}
+  .progress i{background:#999}
+  .stamp{color:#000;border-color:#000}
+  .list-cols{column-count:2;column-gap:24px}
+  .cat{break-inside:avoid;border-color:#000;margin-bottom:10px;box-shadow:none}
+  .cat-head{background:#fff;border-color:#000;padding:6px 10px}
+  .item{padding:4px 10px}
+  .item input[type=checkbox]{border-color:#000;width:14px;height:14px;border-radius:3px}
+  .item input[type=checkbox]:checked{background:#fff}
+  .item input[type=checkbox]:checked::after{content:"✓";color:#000;font-size:.7rem}
+  .item.checked .name{text-decoration:none;color:#000}
+  .hide-done .item.checked{display:flex}
+  .qty{background:#fff;border:1px solid #000;color:#000}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div class="sky">
+  <div class="inner">
+    <header class="tag" id="tagHeader">
+      <div class="tag-top">
+        <span class="tag-hole" aria-hidden="true"></span>
+        <div class="tag-head">
+          <div class="tag-route" id="tagRoute">PACKING LIST</div>
+          <div class="tag-title" id="tagTitle">Zbalené?</div>
+          <div class="tag-dates" id="tagDates"></div>
+        </div>
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" id="langSk" class="on">SK</button>
+          <button type="button" id="langEn">EN</button>
+        </div>
+      </div>
+      <div class="tag-perf" aria-hidden="true"></div>
+      <div class="tag-bottom">
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progressBar"><i id="progressFill"></i></div>
+        <span class="stamp" id="stamp">0 / 0</span>
+      </div>
+    </header>
+  </div>
+  <svg class="waves" viewBox="0 0 1200 26" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,14 C60,26 120,2 180,14 C240,26 300,2 360,14 C420,26 480,2 540,14 C600,26 660,2 720,14 C780,26 840,2 900,14 C960,26 1020,2 1080,14 C1140,26 1200,2 1260,14 L1260,26 L0,26 Z" fill="#F2F6FA"/>
+  </svg>
+</div>
+
+<div class="wrap">
+<main>
+
+  <!-- dotazník -->
+  <section class="card no-print" id="wizard">
+    <h2 data-i="wiz_title"></h2>
+    <p class="hint" data-i="wiz_hint"></p>
+
+    <div class="grid2">
+      <div class="field">
+        <label class="f" for="fDest" data-i="l_dest"></label>
+        <input type="text" id="fDest" data-ph="ph_dest">
+      </div>
+      <div class="field">
+        <label class="f" for="fDates" data-i="l_dates"></label>
+        <input type="text" id="fDates" data-ph="ph_dates">
+      </div>
+    </div>
+    <div class="field">
+      <label class="f" for="fDays" data-i="l_days"></label>
+      <input type="number" id="fDays" min="1" max="60" placeholder="7" inputmode="numeric">
+    </div>
+
+    <div class="grid3">
+      <div class="field">
+        <label class="f" data-i="l_gender"></label>
+        <div class="seg" id="segGender">
+          <button type="button" data-v="muz" class="on" data-i="g_man"></button>
+          <button type="button" data-v="zena" data-i="g_woman"></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="f" data-i="l_transport"></label>
+        <div class="seg" id="segTransport">
+          <button type="button" data-v="lietadlo" class="on" data-i="t_plane"></button>
+          <button type="button" data-v="auto" data-i="t_car"></button>
+          <button type="button" data-v="ine" data-i="t_other"></button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="f" data-i="l_climate"></label>
+        <div class="seg" id="segClimate">
+          <button type="button" data-v="horuco" class="on" data-i="c_hot"></button>
+          <button type="button" data-v="mierne" data-i="c_mild"></button>
+          <button type="button" data-v="chladno" data-i="c_cold"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="f" data-i="l_acts"></label>
+      <div class="chips" id="chipsActs">
+        <button type="button" class="chip" data-v="plaz">🏖️ <span data-i="a_beach"></span></button>
+        <button type="button" class="chip" data-v="snorchel">🤿 <span data-i="a_snorkel"></span></button>
+        <button type="button" class="chip" data-v="geo">📍 <span data-i="a_geo"></span></button>
+        <button type="button" class="chip" data-v="vylety">🚗 <span data-i="a_trips"></span></button>
+        <button type="button" class="chip" data-v="turistika">🥾 <span data-i="a_hike"></span></button>
+        <button type="button" class="chip" data-v="mesto">🏛️ <span data-i="a_city"></span></button>
+        <button type="button" class="chip" data-v="praca">💻 <span data-i="a_work"></span></button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnGenerate" data-i="b_generate"></button>
+    </div>
+  </section>
+
+  <!-- zoznam -->
+  <section id="listSection" hidden>
+    <div class="toolbar no-print">
+      <button class="btn small ghost" id="btnHideDone"></button>
+      <span class="spacer"></span>
+      <button class="btn small ghost" id="btnPrint">🖨️ <span data-i="b_print"></span></button>
+      <button class="btn small ghost" id="btnReset" data-i="b_new"></button>
+    </div>
+    <div class="list-cols" id="listRoot"></div>
+    <p class="print-only" style="margin-top:8px;font-size:10px;color:#555" data-i="print_note"></p>
+  </section>
+
+  <footer class="no-print" data-i="footer"></footer>
+</main>
+</div>
+
+<script>
+"use strict";
+
+/* ================= i18n ================= */
+const I18N = {
+sk:{
+  ui:{
+    app:"Zbalené?", route:"PACKING LIST",
+    wiz_title:"Nová cesta",
+    wiz_hint:"Odpovedz na pár otázok a zoznam sa poskladá sám. Neskôr si ho doladíš ručne — položky vieš pridávať aj mazať.",
+    l_dest:"Destinácia", l_dates:"Termín (voliteľné)", l_days:"Počet dní",
+    ph_dest:"napr. Kos, Grécko", ph_dates:"napr. 4.–11. 7.",
+    l_gender:"Balím pre", g_man:"Muža", g_woman:"Ženu",
+    l_transport:"Doprava", t_plane:"Lietadlo", t_car:"Auto", t_other:"Iné",
+    l_climate:"Počasie v cieli", c_hot:"Horúco", c_mild:"Mierne", c_cold:"Chladno",
+    l_acts:"Čo plánuješ? (vyber všetko, čo sedí)",
+    a_beach:"Pláž a more", a_snorkel:"Šnorchlovanie", a_geo:"Geocaching",
+    a_trips:"Auto a výlety po okolí", a_hike:"Turistika", a_city:"Mestá a pamiatky", a_work:"Práca na cestách",
+    b_generate:"Vytvoriť zoznam", b_print:"Vytlačiť", b_new:"Nová cesta",
+    b_hide:"Skryť zbalené", b_show:"Zobraziť zbalené",
+    add_ph:"Pridať vlastnú položku…", b_add:"Pridať",
+    del_label:"Odstrániť",
+    confirm_new:"Začať novú cestu? Aktuálny zoznam sa vymaže.",
+    packed:"✓ ZBALENÉ!",
+    print_note:"Vytlačené z appky Zbalené? · zaškrtni pri balení",
+    footer:"zoznam sa ukladá v tomto prehliadači · funguje na mobile aj PC",
+    day1:"DEŇ", day234:"DNI", day5:"DNÍ",
+    trip_fallback:"Moja cesta"
+  },
+  cats:{
+    doklady:"Doklady a peniaze", oblecenie:"Oblečenie", obuv:"Obuv",
+    hygiena:"Hygiena", lekarnicka:"Lekárnička", elektro:"Elektronika",
+    plaz:"Pláž a more", geo:"Geocaching", vylety:"Auto a výlety",
+    praca:"Práca", prirucna:"Do lietadla (príručná)", predodch:"Pred odchodom z domu"
+  },
+  items:{
+    id_pass:"Občiansky preukaz / pas", cards_cash:"Platobné karty + hotovosť",
+    insurance:"Cestovné poistenie", ehic:"Európsky preukaz poistenca (EHIC)",
+    tickets:"Letenky / online check-in", voucher:"Voucher na ubytovanie / itinerár",
+    driver_license:"Vodičský preukaz",
+    underwear:"Spodná bielizeň", socks:"Ponožky", tshirts:"Tričká / tielka",
+    shorts:"Kraťasy", swimwear:"Plavky", pants:"Dlhé nohavice",
+    hoodie:"Mikina alebo ľahká bunda", winter_set:"Teplá bunda, čiapka, rukavice",
+    pajamas:"Pyžamo / vec na spanie", dinner_outfit:"Outfit na večeru",
+    dresses:"Letné šaty", bras:"Podprsenky", pareo:"Plážové pareo / sukňa",
+    flipflops:"Šľapky / sandále", sneakers:"Tenisky", sneakers_solid:"Pevné tenisky / treková obuv",
+    water_shoes:"Obuv do vody",
+    toothbrush:"Zubná kefka a pasta", deo:"Dezodorant", shampoo:"Šampón / sprchový gél",
+    shaving:"Holenie / starostlivosť o pleť", comb:"Hrebeň / kefa",
+    spf:"Opaľovací krém SPF 30–50", aftersun:"Po opaľovaní / panthenol",
+    lipbalm:"Balzam na pery s UV filtrom", wipes:"Vlhčené utierky / dezinfekčný gél",
+    makeup:"Odličovanie a kozmetika", fem_hygiene:"Hygienické potreby",
+    meds:"Lieky, ktoré bežne užívaš", painkiller:"Liek na bolesť / horúčku",
+    digestion:"Niečo na trávenie", motion:"Liek na nevoľnosť",
+    plasters:"Náplasti + dezinfekcia", antihist:"Antihistaminikum", repellent:"Repelent proti komárom",
+    phone:"Mobil + nabíjací kábel a adaptér", powerbank:"Powerbanka", headphones:"Slúchadlá",
+    watch:"Hodinky / náramok + nabíjačka", waterproof_case:"Vodotesné puzdro na mobil",
+    towel:"Plážová osuška / rýchloschnúci uterák", sunglasses:"Slnečné okuliare",
+    cap:"Šiltovka / klobúk", beachbag:"Plážová taška", snorkel:"Šnorchel a maska",
+    book:"Kniha / čítačka na pláž",
+    pen:"Pero", tweezers:"Pinzeta", offline:"Offline mapy + stiahnuté kešky",
+    headlamp:"Čelovka / malá baterka", swag:"Drobnosti na výmenu / trackables",
+    geo_backpack:"Malý ruksak na geo-výpravy",
+    phone_mount:"Držiak na mobil do auta", car_charger:"USB nabíjačka do auta",
+    water_bottle:"Fľaša na vodu", camera:"Fotoaparát / miesto v mobile na fotky",
+    hike_backpack:"Ľahký ruksak na túru", buff:"Šatka / buff proti slnku",
+    laptop:"Notebook + nabíjačka", mouse:"Myš / adaptéry",
+    liquids:"Tekutiny do 100 ml v priehľadnom vrecku", empty_bottle:"Prázdna fľaša na vodu",
+    docs_meds_pb:"Doklady, lieky a powerbanka do príručnej", hoodie_plane:"Mikina do lietadla",
+    gum:"Žuvačky / cukríky na štart a pristátie", entertainment:"Zábava na let",
+    doc_copies:"Kópie dokladov v cloude / e-maile", roaming:"Skontrolovať roaming a limity na karte",
+    checkin:"Online check-in + palubné lístky v mobile", trash:"Vyniesť smeti, vyprázdniť chladničku",
+    appliances:"Vypnúť spotrebiče, zavrieť okná", plants:"Zaliať kvety / zabezpečiť domácnosť",
+    lock:"Zamknúť a kľúče na dohodnuté miesto"
+  },
+  notes:{
+    check_validity:"skontroluj platnosť",
+    ins_note:"kartička alebo appka poisťovne",
+    dl_note:"na požičanie auta stačí slovenský (EÚ)",
+    swim_note:"jedny schnú, druhé na sebe",
+    pants_hot:"na večer / klimatizované podniky",
+    hoodie_hot:"večer pri mori vie byť veterno",
+    dinner_note:"niečo elegantnejšie do reštaurácie",
+    geo_shoes:"na kešky v teréne sa hodia",
+    water_note:"veľa pláží na Kose je kamienkových",
+    mini_note:"mini balenia alebo do kufra",
+    uv_note:"v lete je UV index extrémny",
+    meds_carryon:"vždy do príručnej batožiny",
+    pain_note:"paracetamol alebo ibuprofen",
+    dig_note:"čierne uhlie, probiotiká, rehydratačný prášok",
+    motion_note:"serpentíny, loď na fakultatívnom výlete",
+    anti_note:"uštipnutia, alergie",
+    plug_note:"v Grécku sú rovnaké zásuvky ako u nás",
+    pb_note:"povinne do príručnej batožiny",
+    pen_note:"do logbookov, jedno záložné",
+    tw_note:"nano a mikro kešky",
+    off_note:"c:geo alebo oficiálna appka, šetri dáta",
+    hl_note:"kešky v skalách a pri západe slnka",
+    wb_note:"v aute nech je vždy zásoba",
+    eb_note:"naplníš za bezpečnostnou kontrolou",
+    hp_note:"klimatizácia na palube",
+    ent_note:"kniha, stiahnutý film, podcast"
+  }
+},
+en:{
+  ui:{
+    app:"Packed?", route:"PACKING LIST",
+    wiz_title:"New trip",
+    wiz_hint:"Answer a few questions and the list builds itself. You can fine-tune it later — add or remove any item.",
+    l_dest:"Destination", l_dates:"Dates (optional)", l_days:"Number of days",
+    ph_dest:"e.g. Kos, Greece", ph_dates:"e.g. July 4–11",
+    l_gender:"Packing for", g_man:"A man", g_woman:"A woman",
+    l_transport:"Transport", t_plane:"Plane", t_car:"Car", t_other:"Other",
+    l_climate:"Weather there", c_hot:"Hot", c_mild:"Mild", c_cold:"Cold",
+    l_acts:"What's the plan? (pick all that apply)",
+    a_beach:"Beach & sea", a_snorkel:"Snorkeling", a_geo:"Geocaching",
+    a_trips:"Car & day trips", a_hike:"Hiking", a_city:"Cities & sights", a_work:"Work on the go",
+    b_generate:"Build my list", b_print:"Print", b_new:"New trip",
+    b_hide:"Hide packed", b_show:"Show packed",
+    add_ph:"Add your own item…", b_add:"Add",
+    del_label:"Remove",
+    confirm_new:"Start a new trip? The current list will be cleared.",
+    packed:"✓ PACKED!",
+    print_note:"Printed from Packed? · tick items as you pack",
+    footer:"your list is saved in this browser · works on phone and desktop",
+    day1:"DAY", day234:"DAYS", day5:"DAYS",
+    trip_fallback:"My trip"
+  },
+  cats:{
+    doklady:"Documents & money", oblecenie:"Clothes", obuv:"Shoes",
+    hygiena:"Toiletries", lekarnicka:"First-aid kit", elektro:"Electronics",
+    plaz:"Beach & sea", geo:"Geocaching", vylety:"Car & day trips",
+    praca:"Work", prirucna:"Carry-on (plane)", predodch:"Before leaving home"
+  },
+  items:{
+    id_pass:"ID card / passport", cards_cash:"Bank cards + some cash",
+    insurance:"Travel insurance", ehic:"European Health Insurance Card (EHIC)",
+    tickets:"Flight tickets / online check-in", voucher:"Accommodation voucher / itinerary",
+    driver_license:"Driving licence",
+    underwear:"Underwear", socks:"Socks", tshirts:"T-shirts / tank tops",
+    shorts:"Shorts", swimwear:"Swimwear", pants:"Long trousers",
+    hoodie:"Hoodie or light jacket", winter_set:"Warm jacket, hat, gloves",
+    pajamas:"Pajamas / sleepwear", dinner_outfit:"Dinner outfit",
+    dresses:"Summer dresses", bras:"Bras", pareo:"Beach pareo / skirt",
+    flipflops:"Flip-flops / sandals", sneakers:"Sneakers", sneakers_solid:"Sturdy sneakers / trail shoes",
+    water_shoes:"Water shoes",
+    toothbrush:"Toothbrush & toothpaste", deo:"Deodorant", shampoo:"Shampoo / shower gel",
+    shaving:"Shaving / skincare", comb:"Comb / brush",
+    spf:"Sunscreen SPF 30–50", aftersun:"After-sun / panthenol",
+    lipbalm:"Lip balm with UV filter", wipes:"Wet wipes / hand sanitizer",
+    makeup:"Makeup & remover", fem_hygiene:"Feminine hygiene",
+    meds:"Your regular medication", painkiller:"Pain / fever relief",
+    digestion:"Something for digestion", motion:"Motion sickness pills",
+    plasters:"Plasters + disinfectant", antihist:"Antihistamine", repellent:"Mosquito repellent",
+    phone:"Phone + cable and charger", powerbank:"Power bank", headphones:"Headphones",
+    watch:"Watch / band + charger", waterproof_case:"Waterproof phone pouch",
+    towel:"Beach towel / quick-dry towel", sunglasses:"Sunglasses",
+    cap:"Cap / sun hat", beachbag:"Beach bag", snorkel:"Snorkel & mask",
+    book:"Book / e-reader for the beach",
+    pen:"Pen", tweezers:"Tweezers", offline:"Offline maps + downloaded caches",
+    headlamp:"Headlamp / small flashlight", swag:"Swag to trade / trackables",
+    geo_backpack:"Small backpack for geo trips",
+    phone_mount:"Phone mount for the car", car_charger:"USB car charger",
+    water_bottle:"Water bottle", camera:"Camera / free space on your phone",
+    hike_backpack:"Light hiking backpack", buff:"Scarf / buff for sun",
+    laptop:"Laptop + charger", mouse:"Mouse / adapters",
+    liquids:"Liquids under 100 ml in a clear bag", empty_bottle:"Empty water bottle",
+    docs_meds_pb:"Documents, meds & power bank in carry-on", hoodie_plane:"Hoodie for the plane",
+    gum:"Chewing gum for takeoff & landing", entertainment:"In-flight entertainment",
+    doc_copies:"Copies of documents in cloud / email", roaming:"Check roaming & card limits",
+    checkin:"Online check-in + boarding passes on phone", trash:"Take out trash, empty the fridge",
+    appliances:"Switch off appliances, close windows", plants:"Water plants / secure the home",
+    lock:"Lock up, leave keys as agreed"
+  },
+  notes:{
+    check_validity:"check the expiry date",
+    ins_note:"card or insurer's app",
+    dl_note:"an EU licence is enough for rentals",
+    swim_note:"one dries while you wear the other",
+    pants_hot:"for evenings / air-conditioned places",
+    hoodie_hot:"seaside evenings can get windy",
+    dinner_note:"something nicer for restaurants",
+    geo_shoes:"handy for caches off the path",
+    water_note:"many beaches on Kos are pebbly",
+    mini_note:"travel sizes or into checked luggage",
+    uv_note:"summer UV index is extreme",
+    meds_carryon:"always in your carry-on",
+    pain_note:"paracetamol or ibuprofen",
+    dig_note:"charcoal, probiotics, rehydration salts",
+    motion_note:"winding roads, boat day trips",
+    anti_note:"bites, allergies",
+    plug_note:"Greece uses standard EU sockets",
+    pb_note:"must go in carry-on luggage",
+    pen_note:"for logbooks, one spare",
+    tw_note:"nano and micro caches",
+    off_note:"c:geo or the official app, save your data",
+    hl_note:"caches in rocks and at sunset",
+    wb_note:"keep a stash in the car",
+    eb_note:"fill it after security",
+    hp_note:"cabin AC gets chilly",
+    ent_note:"book, downloaded movie, podcast"
+  }
+}
+};
+
+const CATS = ["doklady","oblecenie","obuv","hygiena","lekarnicka","elektro","plaz","geo","vylety","praca","prirucna","predodch"];
+const CAT_EMOJI = {doklady:"🛂",oblecenie:"👕",obuv:"👟",hygiena:"🧴",lekarnicka:"💊",elektro:"🔌",plaz:"🏖️",geo:"📍",vylety:"🚗",praca:"💻",prirucna:"🎒",predodch:"🏠"};
+
+/* ================= generátor ================= */
+function buildItems(cfg){
+  const d = Math.max(1, cfg.days|0);
+  const A = new Set(cfg.acts);
+  const hot = cfg.climate === "horuco";
+  const cold = cfg.climate === "chladno";
+  const fly = cfg.transport === "lietadlo";
+  const zena = cfg.gender === "zena";
+  const items = [];
+  let n = 0;
+  const add = (cat, key, qty, noteKey) => items.push({id:"i"+(n++), cat, key, qty:qty||null, noteKey:noteKey||null, checked:false});
+
+  add("doklady","id_pass",null, fly?"check_validity":null);
+  add("doklady","cards_cash");
+  add("doklady","insurance",null,"ins_note");
+  add("doklady","ehic");
+  if (fly) add("doklady","tickets");
+  add("doklady","voucher");
+  if (A.has("vylety")) add("doklady","driver_license",null,"dl_note");
+
+  add("oblecenie","underwear", d+1);
+  add("oblecenie","socks", Math.max(2, Math.ceil(d*0.6)));
+  add("oblecenie","tshirts", Math.max(3, Math.ceil(d*0.8)));
+  if (!cold) add("oblecenie","shorts", Math.min(4, Math.ceil(d/3)+1));
+  if (A.has("plaz")||A.has("snorchel")) add("oblecenie","swimwear", 2, "swim_note");
+  add("oblecenie","pants", cold?3:1, hot?"pants_hot":null);
+  add("oblecenie","hoodie", cold?2:1, hot?"hoodie_hot":null);
+  if (cold) add("oblecenie","winter_set");
+  add("oblecenie","pajamas");
+  add("oblecenie","dinner_outfit",1,"dinner_note");
+  if (zena){
+    add("oblecenie","dresses",2);
+    add("oblecenie","bras",3);
+    add("oblecenie","pareo");
+  }
+
+  add("obuv","flipflops");
+  add("obuv",(A.has("geo")||A.has("turistika"))?"sneakers_solid":"sneakers",null, A.has("geo")?"geo_shoes":null);
+  if (A.has("plaz")) add("obuv","water_shoes",null,"water_note");
+
+  add("hygiena","toothbrush");
+  add("hygiena","deo");
+  add("hygiena","shampoo",null, fly?"mini_note":null);
+  add("hygiena","shaving");
+  add("hygiena","comb");
+  if (hot){
+    add("hygiena","spf",null,"uv_note");
+    add("hygiena","aftersun");
+    add("hygiena","lipbalm");
+  }
+  add("hygiena","wipes");
+  if (zena){
+    add("hygiena","makeup");
+    add("hygiena","fem_hygiene");
+  }
+
+  add("lekarnicka","meds",null, fly?"meds_carryon":null);
+  add("lekarnicka","painkiller",null,"pain_note");
+  add("lekarnicka","digestion",null,"dig_note");
+  if (A.has("vylety")||fly) add("lekarnicka","motion",null,"motion_note");
+  add("lekarnicka","plasters");
+  add("lekarnicka","antihist",null,"anti_note");
+  if (hot) add("lekarnicka","repellent");
+
+  add("elektro","phone",null,"plug_note");
+  add("elektro","powerbank",null, fly?"pb_note":null);
+  add("elektro","headphones");
+  add("elektro","watch");
+  if (A.has("plaz")||A.has("geo")) add("elektro","waterproof_case");
+
+  if (A.has("plaz")||A.has("snorchel")){
+    add("plaz","towel");
+    add("plaz","sunglasses");
+    add("plaz","cap");
+    add("plaz","beachbag");
+    if (A.has("snorchel")) add("plaz","snorkel");
+    add("plaz","book");
+  }
+
+  if (A.has("geo")){
+    add("geo","pen",2,"pen_note");
+    add("geo","tweezers",null,"tw_note");
+    add("geo","offline",null,"off_note");
+    add("geo","headlamp",null,"hl_note");
+    add("geo","swag");
+    add("geo","geo_backpack");
+  }
+
+  if (A.has("vylety")){
+    add("vylety","phone_mount");
+    add("vylety","car_charger");
+    add("vylety","water_bottle",2,"wb_note");
+    add("vylety","camera");
+  }
+  if (A.has("turistika")){
+    add("vylety","hike_backpack");
+    add("vylety","buff");
+  }
+
+  if (A.has("praca")){
+    add("praca","laptop");
+    add("praca","mouse");
+  }
+
+  if (fly){
+    add("prirucna","liquids");
+    add("prirucna","empty_bottle",null,"eb_note");
+    add("prirucna","docs_meds_pb");
+    add("prirucna","hoodie_plane",null,"hp_note");
+    add("prirucna","gum");
+    add("prirucna","entertainment",null,"ent_note");
+  }
+
+  add("predodch","doc_copies");
+  add("predodch","roaming");
+  if (fly) add("predodch","checkin");
+  add("predodch","trash");
+  add("predodch","appliances");
+  add("predodch","plants");
+  add("predodch","lock");
+
+  return items;
+}
+
+/* ================= úložisko (artifact / web / pamäť) ================= */
+const store = (function(){
+  // 1) Claude artifact storage
+  if (typeof window !== "undefined" && window.storage && typeof window.storage.get === "function"){
+    return {
+      async get(k){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } },
+      async set(k,v){ try{ await window.storage.set(k,v); }catch(e){} },
+      async del(k){ try{ await window.storage.delete(k); }catch(e){} }
+    };
+  }
+  // 2) localStorage (nasadená web verzia)
+  try{
+    const t = "__probe__";
+    localStorage.setItem(t,"1"); localStorage.removeItem(t);
+    return {
+      async get(k){ return localStorage.getItem(k); },
+      async set(k,v){ localStorage.setItem(k,v); },
+      async del(k){ localStorage.removeItem(k); }
+    };
+  }catch(e){}
+  // 3) pamäť
+  const mem = {};
+  return {
+    async get(k){ return (k in mem) ? mem[k] : null; },
+    async set(k,v){ mem[k]=v; },
+    async del(k){ delete mem[k]; }
+  };
+})();
+
+const KEY_STATE = "packing:current";
+const KEY_LANG  = "packing:lang";
+
+/* ================= stav ================= */
+let state = null;   // {cfg, items, hideDone}
+let lang = "sk";
+let saveTimer = null;
+
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>store.set(KEY_STATE, JSON.stringify(state)), 250);
+}
+
+/* ================= i18n render ================= */
+const $ = s => document.querySelector(s);
+function T(){ return I18N[lang]; }
+
+function applyStaticTexts(){
+  const ui = T().ui;
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(el=>{
+    const k = el.getAttribute("data-i");
+    if (ui[k] !== undefined) el.textContent = ui[k];
+  });
+  document.querySelectorAll("[data-ph]").forEach(el=>{
+    const k = el.getAttribute("data-ph");
+    if (ui[k] !== undefined) el.placeholder = ui[k];
+  });
+  $("#langSk").classList.toggle("on", lang==="sk");
+  $("#langEn").classList.toggle("on", lang==="en");
+  $("#btnHideDone").textContent = state && state.hideDone ? ui.b_show : ui.b_hide;
+}
+
+function dayWord(n){
+  const ui = T().ui;
+  if (lang==="en") return n===1 ? ui.day1 : ui.day234;
+  if (n===1) return ui.day1;
+  if (n>=2 && n<=4) return ui.day234;
+  return ui.day5;
+}
+
+/* ================= render ================= */
+function renderHeader(){
+  const ui = T().ui;
+  if (state && state.cfg){
+    $("#tagTitle").textContent = state.cfg.dest || ui.trip_fallback;
+    $("#tagRoute").textContent = ui.route + " · " + state.cfg.days + " " + dayWord(state.cfg.days);
+    $("#tagDates").textContent = state.cfg.dates || "";
+  } else {
+    $("#tagTitle").textContent = ui.app;
+    $("#tagRoute").textContent = ui.route;
+    $("#tagDates").textContent = "";
+  }
+  const items = state ? state.items : [];
+  const done = items.filter(i=>i.checked).length;
+  const pct = items.length ? Math.round(done/items.length*100) : 0;
+  $("#progressFill").style.width = pct + "%";
+  $("#progressBar").setAttribute("aria-valuenow", pct);
+  const st = $("#stamp");
+  if (items.length && done === items.length){
+    st.textContent = ui.packed;
+    st.classList.add("done");
+  } else {
+    st.textContent = done + " / " + items.length + " · " + pct + " %";
+    st.classList.remove("done");
+  }
+}
+
+function itemName(it){
+  if (it.key) return T().items[it.key] || it.key;
+  return it.name || "";
+}
+function itemNote(it){
+  if (it.noteKey) return T().notes[it.noteKey] || null;
+  return null;
+}
+
+function renderList(){
+  const root = $("#listRoot");
+  const ui = T().ui;
+  root.innerHTML = "";
+  if (!state) return;
+  root.classList.toggle("hide-done", !!state.hideDone);
+  $("#btnHideDone").textContent = state.hideDone ? ui.b_show : ui.b_hide;
+
+  for (const catId of CATS){
+    const catItems = state.items.filter(i=>i.cat===catId);
+    if (!catItems.length) continue;
+    const done = catItems.filter(i=>i.checked).length;
+
+    const box = document.createElement("section");
+    box.className = "cat";
+    const head = document.createElement("div");
+    head.className = "cat-head";
+    head.innerHTML = '<span class="emoji">'+CAT_EMOJI[catId]+'</span>';
+    const h3 = document.createElement("h3");
+    h3.textContent = T().cats[catId];
+    const cnt = document.createElement("span");
+    cnt.className = "cat-count";
+    cnt.textContent = done + "/" + catItems.length;
+    head.appendChild(h3); head.appendChild(cnt);
+    box.appendChild(head);
+
+    const ul = document.createElement("ul");
+    ul.className = "items";
+    for (const it of catItems){
+      const li = document.createElement("li");
+      li.className = "item" + (it.checked ? " checked" : "");
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = it.checked;
+      cb.setAttribute("aria-label", itemName(it));
+      cb.addEventListener("change", ()=>{ it.checked = cb.checked; saveState(); renderList(); renderHeader(); });
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = itemName(it);
+      const note = itemNote(it);
+      if (note){
+        const nt = document.createElement("span");
+        nt.className = "note"; nt.textContent = note;
+        name.appendChild(nt);
+      }
+      li.appendChild(cb); li.appendChild(name);
+      if (it.qty){
+        const q = document.createElement("span");
+        q.className = "qty"; q.textContent = it.qty + "×";
+        li.appendChild(q);
+      }
+      const del = document.createElement("button");
+      del.className = "del no-print"; del.textContent = "✕";
+      del.setAttribute("aria-label", ui.del_label + " " + itemName(it));
+      del.addEventListener("click", ()=>{
+        state.items = state.items.filter(x=>x.id!==it.id);
+        saveState(); renderList(); renderHeader();
+      });
+      li.appendChild(del);
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+
+    const addRow = document.createElement("div");
+    addRow.className = "add-row no-print";
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.placeholder = ui.add_ph;
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn small ghost"; addBtn.textContent = ui.b_add;
+    const doAdd = ()=>{
+      const v = inp.value.trim(); if(!v) return;
+      state.items.push({id:"c"+Date.now()+Math.random().toString(36).slice(2,6), cat:catId, key:null, name:v, qty:null, noteKey:null, checked:false});
+      inp.value = "";
+      saveState(); renderList(); renderHeader();
+    };
+    addBtn.addEventListener("click", doAdd);
+    inp.addEventListener("keydown", e=>{ if(e.key==="Enter") doAdd(); });
+    addRow.appendChild(inp); addRow.appendChild(addBtn);
+    box.appendChild(addRow);
+
+    root.appendChild(box);
+  }
+}
+
+function showList(){
+  $("#wizard").hidden = true;
+  $("#listSection").hidden = false;
+  renderHeader(); renderList();
+}
+function showWizard(){
+  $("#wizard").hidden = false;
+  $("#listSection").hidden = true;
+  renderHeader();
+}
+
+/* ================= udalosti ================= */
+document.querySelectorAll(".seg").forEach(seg=>{
+  seg.addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+  });
+});
+$("#chipsActs").addEventListener("click", e=>{
+  const c = e.target.closest(".chip"); if(!c) return;
+  c.classList.toggle("on");
+});
+function segValue(id){ return $("#"+id).querySelector(".on").dataset.v; }
+function chipValues(){ return [...$("#chipsActs").querySelectorAll(".chip.on")].map(c=>c.dataset.v); }
+
+$("#btnGenerate").addEventListener("click", ()=>{
+  const cfg = {
+    dest: $("#fDest").value.trim(),
+    dates: $("#fDates").value.trim(),
+    days: parseInt($("#fDays").value,10) || 7,
+    gender: segValue("segGender"),
+    transport: segValue("segTransport"),
+    climate: segValue("segClimate"),
+    acts: chipValues()
+  };
+  state = { cfg, items: buildItems(cfg), hideDone:false };
+  saveState();
+  showList();
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+
+$("#btnHideDone").addEventListener("click", ()=>{
+  if (!state) return;
+  state.hideDone = !state.hideDone;
+  saveState(); renderList();
+});
+$("#btnPrint").addEventListener("click", ()=>window.print());
+$("#btnReset").addEventListener("click", async ()=>{
+  if (!confirm(T().ui.confirm_new)) return;
+  await store.del(KEY_STATE);
+  state = null;
+  showWizard();
+});
+
+function setLang(l){
+  lang = l;
+  store.set(KEY_LANG, l);
+  applyStaticTexts();
+  renderHeader();
+  if (state && !$("#listSection").hidden) renderList();
+}
+$("#langSk").addEventListener("click", ()=>setLang("sk"));
+$("#langEn").addEventListener("click", ()=>setLang("en"));
+
+/* ================= štart ================= */
+(async function init(){
+  const savedLang = await store.get(KEY_LANG);
+  if (savedLang === "en" || savedLang === "sk") lang = savedLang;
+  else if ((navigator.language||"").toLowerCase().startsWith("en")) lang = "en";
+
+  const raw = await store.get(KEY_STATE);
+  if (raw){
+    try{
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.items && parsed.items.length && parsed.items[0].key !== undefined){
+        state = parsed;
+      }
+    }catch(e){}
+  }
+  applyStaticTexts();
+  if (state) showList(); else showWizard();
+})();
+</script>
+</body>
+</html>
