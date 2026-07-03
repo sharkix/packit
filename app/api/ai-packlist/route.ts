@@ -148,7 +148,7 @@ POKYNY:
    - Zdravotné odporúčania: ak sú uvedené vakcíny, pridaj "Potvrdenie o očkovaní" alebo príslušné lieky
    - Lokálne kultúrne požiadavky: dress code, špeciálne povolenia, zálohy
    - Špecifiká destinácie, terén, sezóna, aktivity
-   - Ak ruksak: maximálna efektívnosť, odľahčenie
+   - Ak LEN osobná batožina (malý ruksak bez kabínovej/odbavenej): maximálna efektívnosť, odľahčenie, minimalizmus
    - DOPRAVA: ak ide autom — povinná výbava, prestávky, občerstvenie; ak vlakom/autobusom — zabezpečenie batožiny; NIKDY nespomínaj letecké limity ak sa neletí
    - BATOŽINOVÉ LIMITY AEROLÍNIE: ak sú uvedené konkrétne rozmery/váhy (z čísla letu alebo AI batožiny), AKTÍVNE s nimi pracuj — prispôsob množstvo oblečenia objemu batožiny, navrhni vyhodenie objemných položiek pri malej batožine, pri prísnych limitoch (napr. Ryanair/Wizz 10 kg) upozorni na váženie
    - UBYTOVANIE: privát/apartmán = doniesť uteráky, hygienu, základné potraviny; kemp = kompletné vybavenie; hotel = netreba uteráky ani sušič

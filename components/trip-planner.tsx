@@ -29,7 +29,7 @@ import { LuggagePicker } from './luggage-picker'
 import { AiStatus } from './ai-status'
 import { CountryInfoCard } from './country-info-card'
 import { fetchWeather } from '@/lib/weather'
-import { generatePackingList, legacyLuggageToPieces } from '@/lib/packing'
+import { generatePackingList, legacyLuggageToPieces, piecesToLegacyLuggage } from '@/lib/packing'
 import type { GeoResult, Gender, PackItem, TripType, LuggageType, LuggagePiece, FlightInfo, CountryInfo, TransportMode, Accommodation } from '@/lib/types'
 import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import type { AiLookupResult } from '@/app/api/ai-lookup/route'
@@ -171,7 +171,7 @@ export function TripPlanner() {
       carRental,
       geocaching,
       optionalTrip,
-      luggageType: 'kufor-maly', // legacy field, superseded by luggagePieces
+      luggageType: piecesToLegacyLuggage(luggagePieces), // legacy field derived for backward-compat
       luggagePieces,
       flightNumber,
       flightInfo,
@@ -194,7 +194,7 @@ export function TripPlanner() {
     persist()
   }, [persist])
 
-  // ── Weather ──────────────────────────────────────────────────
+  // ── Weather ─────────────────────────���────────────────────────
   const {
     data: weather,
     isLoading: weatherLoading,
@@ -300,7 +300,7 @@ export function TripPlanner() {
       carRental,
       geocaching,
       optionalTrip,
-      luggageType: 'kufor-maly' as LuggageType, // legacy, superseded by luggagePieces
+      luggageType: piecesToLegacyLuggage(luggagePieces), // legacy field derived for backward-compat
       luggagePieces,
       flightNumber: flightNumber || undefined,
       flightInfo: flightInfo ?? undefined,

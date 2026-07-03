@@ -83,6 +83,45 @@ export function LuggagePicker({
     emit({ luggagePieces: next })
   }
 
+  // Shared AI fallback — resolves airline + baggage rules for a flight number
+  // with the given priority/paid-bag flags. Returns null when AI can't resolve.
+  async function resolveViaAi(flightNum: string, prio: boolean, paid: boolean): Promise<FlightInfo | null> {
+    try {
+      const res = await fetch('/api/ai-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flightNumber: flightNum,
+          hasPriority: prio,
+          hasPaidBag: paid,
+          lang,
+          // No country — we only want baggageInfo resolved
+          country: '',
+          destination: '',
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.baggageInfo?.airline) {
+          const b = data.baggageInfo
+          return {
+            flightNumber: flightNum.toUpperCase(),
+            airline: b.airline ?? flightNum.toUpperCase(),
+            iata: flightNum.replace(/\d+.*/, '').trim().toUpperCase(),
+            cabinBagSize: b.cabinSize ?? '55×40×20 cm',
+            cabinBagWeight: b.cabinWeightKg,
+            checkedBagWeight: b.checkedWeightKg,
+            priorityBoardingNote: prio ? b.priorityNote : undefined,
+            source: 'api',
+          }
+        }
+      }
+    } catch {
+      // network/AI failure — treated as unresolved
+    }
+    return null
+  }
+
   async function handleFlightLookup() {
     const raw = inputFlight.trim()
     if (!raw) {
@@ -102,45 +141,13 @@ export function LuggagePicker({
     }
 
     // 2. Fallback: ask AI to identify the airline and its baggage rules
-    try {
-      const res = await fetch('/api/ai-lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          flightNumber: raw,
-          hasPriority,
-          hasPaidBag,
-          lang,
-          // No country — we only want baggageInfo resolved
-          country: '',
-          destination: '',
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.baggageInfo?.airline) {
-          const b = data.baggageInfo
-          const aiInfo: FlightInfo = {
-            flightNumber: raw.toUpperCase(),
-            airline: b.airline ?? raw.toUpperCase(),
-            iata: raw.replace(/\d+.*/, '').trim().toUpperCase(),
-            cabinBagSize: b.cabinSize ?? '55×40×20 cm',
-            cabinBagWeight: b.cabinWeightKg,
-            checkedBagWeight: b.checkedWeightKg,
-            priorityBoardingNote: hasPriority ? b.priorityNote : undefined,
-            source: 'api',
-          }
-          setLoading(false)
-          emit({ flightNumber: raw, flightInfo: aiInfo })
-          return
-        }
-      }
-    } catch {
-      // AI lookup failed — fall through to notFound
+    const aiInfo = await resolveViaAi(raw, hasPriority, hasPaidBag)
+    setLoading(false)
+    if (aiInfo) {
+      emit({ flightNumber: raw, flightInfo: aiInfo })
+      return
     }
 
-    setLoading(false)
     emit({ flightNumber: raw, flightInfo: null })
     setNotFound(true)
   }
@@ -153,15 +160,29 @@ export function LuggagePicker({
     }
   }
 
-  function handlePriority(v: boolean) {
+  async function handlePriority(v: boolean) {
     // Re-run local lookup so bag sizes update — but NEVER wipe AI-resolved info
     const local = flightNumber ? lookupFlightBaggage(flightNumber, v, hasPaidBag) : null
     emit({ hasPriority: v, flightInfo: local ?? flightInfo })
+    // AI-resolved airline: local DB can't recompute — re-query AI with the new flag
+    if (!local && flightNumber && flightInfo?.source === 'api') {
+      setLoading(true)
+      const refreshed = await resolveViaAi(flightNumber, v, hasPaidBag)
+      setLoading(false)
+      if (refreshed) emit({ hasPriority: v, flightInfo: refreshed })
+    }
   }
 
-  function handlePaidBag(v: boolean) {
+  async function handlePaidBag(v: boolean) {
     const local = flightNumber ? lookupFlightBaggage(flightNumber, hasPriority, v) : null
     emit({ hasPaidBag: v, flightInfo: local ?? flightInfo })
+    // AI-resolved airline: refresh checked-bag limits with the new paid-bag flag
+    if (!local && flightNumber && flightInfo?.source === 'api') {
+      setLoading(true)
+      const refreshed = await resolveViaAi(flightNumber, hasPriority, v)
+      setLoading(false)
+      if (refreshed) emit({ hasPaidBag: v, flightInfo: refreshed })
+    }
   }
 
   async function pickAirline(iata: string) {
@@ -176,34 +197,13 @@ export function LuggagePicker({
     }
     // AI fallback for airlines not in local DB
     setLoading(true)
-    try {
-      const res = await fetch('/api/ai-lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ flightNumber: fake, hasPriority, hasPaidBag, lang, country: '', destination: '' }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.baggageInfo?.airline) {
-          const b = data.baggageInfo
-          const aiInfo: FlightInfo = {
-            flightNumber: fake,
-            airline: b.airline ?? iata,
-            iata,
-            cabinBagSize: b.cabinSize ?? '55×40×20 cm',
-            cabinBagWeight: b.cabinWeightKg,
-            checkedBagWeight: b.checkedWeightKg,
-            priorityBoardingNote: hasPriority ? b.priorityNote : undefined,
-            source: 'api',
-          }
-          emit({ flightNumber: fake, flightInfo: aiInfo })
-          setNotFound(false)
-          setLoading(false)
-          return
-        }
-      }
-    } catch { /* fall through */ }
+    const aiInfo = await resolveViaAi(fake, hasPriority, hasPaidBag)
     setLoading(false)
+    if (aiInfo) {
+      emit({ flightNumber: fake, flightInfo: aiInfo })
+      setNotFound(false)
+      return
+    }
     emit({ flightNumber: fake, flightInfo: null })
     setNotFound(true)
   }
@@ -379,7 +379,7 @@ export function LuggagePicker({
           </span>
         </label>
 
-        {(luggagePieces.includes('odbavena') || luggagePieces.includes('kabinova')) && (
+        {luggagePieces.includes('odbavena') && (
           <label className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
             hasPaidBag ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted'
           }`}>

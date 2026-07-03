@@ -12,6 +12,16 @@ export function legacyLuggageToPieces(t: LuggageType | undefined): LuggagePiece[
   }
 }
 
+// Inverse: derive the closest legacy single-select value from the multi-piece model
+// (kept so old saves / older app versions reading `luggageType` stay consistent)
+export function piecesToLegacyLuggage(pieces: LuggagePiece[]): LuggageType {
+  if (pieces.includes('odbavena')) return 'kufor-velky'
+  if (pieces.includes('kabinova')) {
+    return pieces.includes('osobna') ? 'ruksak+kabinka' : 'kufor-maly'
+  }
+  return 'ruksak'
+}
+
 export const CATEGORY_ORDER = [
   'doklady',
   'batazina',
@@ -119,8 +129,14 @@ export function generatePackingList(cfg: TripConfig): PackItem[] {
     }
 
     if (hasOsobna) {
-      add('batazina', 'Malý batoh / ruksak (osobná batožina)', undefined,
-        hasKabinova || hasOdbavena ? 'pod sedadlo — do 40×20×25 cm' : 'jediná batožina — maximálna efektívnosť!')
+      // Personal-item dimensions differ per airline (Ryanair 40×20×25, Wizz 40×30×20, easyJet 45×36×20…)
+      // so never hard-code them — reference the resolved airline when we have one
+      const osobnaNote = hasKabinova || hasOdbavena
+        ? fi
+          ? `pod sedadlo — over rozmery osobnej batožiny (${fi.airline})`
+          : 'pod sedadlo — over rozmery u leteckej spoločnosti'
+        : 'jediná batožina — maximálna efektívnosť!'
+      add('batazina', 'Malý batoh / ruksak (osobná batožina)', undefined, osobnaNote)
       if (!hasKabinova && !hasOdbavena) {
         add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
       }
