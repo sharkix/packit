@@ -18,9 +18,11 @@ import { DateRangePicker } from './date-range-picker'
 import { WeatherCard } from './weather-card'
 import { PackingList } from './packing-list'
 import { LuggagePicker } from './luggage-picker'
+import { AiStatus } from './ai-status'
 import { fetchWeather } from '@/lib/weather'
 import { generatePackingList } from '@/lib/packing'
 import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo } from '@/lib/types'
+import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import { useLang } from '@/lib/i18n'
 
 function useTripTypes(
@@ -59,6 +61,8 @@ export function TripPlanner() {
   const [hasPriority, setHasPriority] = useState(false)
   const [hasPaidBag, setHasPaidBag] = useState(false)
   const [items, setItems] = useState<PackItem[] | null>(null)
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [aiResult, setAiResult] = useState<AiPacklistResult | null>(null)
 
   const {
     data: weather,
@@ -96,7 +100,8 @@ export function TripPlanner() {
 
   function generate() {
     if (!destination || !startDate || !endDate) return
-    const list = generatePackingList({
+
+    const cfg = {
       destination,
       startDate,
       endDate,
@@ -113,12 +118,68 @@ export function TripPlanner() {
       flightInfo: flightInfo ?? undefined,
       hasPriority,
       hasPaidBag,
+    }
+
+    // 1. Generate base list immediately
+    const baseList = generatePackingList(cfg)
+    setItems(baseList)
+    setAiResult(null)
+    setAiStatus('loading')
+
+    // 2. Fire AI personalisation in the background
+    fetch('/api/ai-packlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
     })
-    setItems(list)
+      .then((r) => {
+        if (!r.ok) throw new Error('API error')
+        return r.json() as Promise<AiPacklistResult>
+      })
+      .then((result) => {
+        setAiResult(result)
+        setAiStatus('done')
+
+        // Merge AI additions and apply removals + highlights
+        setItems((prev) => {
+          if (!prev) return prev
+
+          // Apply removals
+          const removed = new Set(result.removals.map((n) => n.toLowerCase()))
+          let merged = prev.filter((i) => !removed.has(i.name.toLowerCase()))
+
+          // Apply highlights (add a marker via note prefix)
+          const highlighted = new Set(result.highlights.map((n) => n.toLowerCase()))
+          merged = merged.map((i) =>
+            highlighted.has(i.name.toLowerCase())
+              ? { ...i, highlight: true }
+              : i,
+          )
+
+          // Add AI additions
+          const additions: PackItem[] = result.additions.map((a, idx) => ({
+            id: `ai${idx}`,
+            category: a.category,
+            name: a.name,
+            qty: a.qty,
+            note: a.note,
+            checked: false,
+            aiAdded: true,
+            highlight: highlighted.has(a.name.toLowerCase()),
+          }))
+
+          return [...merged, ...additions]
+        })
+      })
+      .catch(() => {
+        setAiStatus('error')
+      })
   }
 
   function reset() {
     setItems(null)
+    setAiStatus('idle')
+    setAiResult(null)
   }
 
   const tripDays =
@@ -167,6 +228,13 @@ export function TripPlanner() {
             </button>
           </div>
         </div>
+
+        <AiStatus
+          status={aiStatus}
+          reasoning={aiResult?.reasoning}
+          weatherNote={aiResult?.weatherNote}
+          lang={lang}
+        />
 
         <WeatherCard
           weather={weather}

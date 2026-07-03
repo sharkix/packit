@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from 'react'
 
 export type Lang = 'sk' | 'en'
 
-const SK = {
+const SK: Record<string, string | string[]> = {
   appName: 'Zbalené?',
   appTagline: 'Zadaj destináciu a termín — my zistíme počasie a zbalíme ťa.',
   destination: 'Destinácia',
@@ -81,9 +81,9 @@ const SK = {
   catVylet: 'Fakultatívny výlet',
   catPredodchodom: 'Pred odchodom',
   catBatazina: 'Batožina',
-} as const
+}
 
-const EN: typeof SK = {
+const EN: Record<string, string | string[]> = {
   appName: 'Packed?',
   appTagline: 'Enter destination and dates — we check the weather and pack for you.',
   destination: 'Destination',
@@ -164,25 +164,33 @@ const EN: typeof SK = {
 
 export const TRANSLATIONS = { sk: SK, en: EN }
 
-type Translations = typeof SK
+// Separate string-only type (months is accessed separately via monthNames)
+export type Translations = Record<string, string>
 
 interface LangCtx {
   lang: Lang
   t: Translations
+  monthNames: string[]
   setLang: (l: Lang) => void
 }
 
 const Ctx = createContext<LangCtx>({
   lang: 'sk',
-  t: SK,
+  t: SK as unknown as Translations,
+  monthNames: SK.months as string[],
   setLang: () => {},
 })
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('sk')
   function setLang(l: Lang) { setLangState(l) }
+  const raw = TRANSLATIONS[lang]
+  const t: Translations = Object.fromEntries(
+    Object.entries(raw).filter(([, v]) => !Array.isArray(v))
+  ) as Translations
+  const monthNames = raw.months as string[]
   return (
-    <Ctx.Provider value={{ lang, t: TRANSLATIONS[lang], setLang }}>
+    <Ctx.Provider value={{ lang, t, monthNames, setLang }}>
       {children}
     </Ctx.Provider>
   )

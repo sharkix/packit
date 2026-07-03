@@ -21,6 +21,7 @@ import {
   Map,
   CheckSquare,
   Minus,
+  Star,
 } from 'lucide-react'
 import type { PackItem } from '@/lib/types'
 import { CATEGORY_ORDER } from '@/lib/packing'
@@ -316,7 +317,9 @@ function PackingItem({
   }
 
   return (
-    <li className="group flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-b-0">
+    <li className={`group flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-b-0 ${
+      item.aiAdded ? 'bg-primary/[0.03]' : ''
+    }`}>
       <input
         type="checkbox"
         id={`item-${item.id}`}
@@ -330,7 +333,18 @@ function PackingItem({
           item.checked ? 'text-muted-foreground line-through' : ''
         }`}
       >
-        {item.name}
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          {item.highlight && !item.checked && (
+            <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" aria-label="Dôležitá položka" />
+          )}
+          {item.name}
+          {item.aiAdded && !item.checked && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary leading-none">
+              <Sparkles className="size-2.5" aria-hidden="true" />
+              AI
+            </span>
+          )}
+        </span>
         {item.note && (
           <span className="ml-1.5 text-xs text-muted-foreground">
             ({item.note})

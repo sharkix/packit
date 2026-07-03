@@ -36,7 +36,7 @@ export function DateRangePicker({
     endTime: string
   }) => void
 }) {
-  const { t, lang } = useLang()
+  const { t, lang, monthNames } = useLang()
   const [open, setOpen] = useState(false)
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -162,7 +162,7 @@ export function DateRangePicker({
               <ChevronLeft className="size-5" aria-hidden="true" />
             </button>
             <span className="font-semibold">
-              {t.months[viewMonth]} {viewYear}
+              {monthNames[viewMonth]} {viewYear}
             </span>
             <button
               type="button"

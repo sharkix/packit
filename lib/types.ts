@@ -74,4 +74,6 @@ export interface PackItem {
   note?: string
   checked: boolean
   custom?: boolean
+  aiAdded?: boolean    // added by AI personalisation
+  highlight?: boolean  // flagged as especially important by AI
 }
