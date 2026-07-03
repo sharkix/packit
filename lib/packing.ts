@@ -1,4 +1,26 @@
-import type { PackItem, TripConfig, LuggageType } from './types'
+import type { PackItem, TripConfig, LuggageType, LuggagePiece } from './types'
+
+// Map legacy single-select luggage type to the new multi-piece model
+export function legacyLuggageToPieces(t: LuggageType | undefined): LuggagePiece[] {
+  switch (t) {
+    case 'ruksak': return ['osobna']
+    case 'ruksak+kabinka': return ['osobna', 'kabinova']
+    case 'kufor-velky': return ['osobna', 'odbavena']
+    case 'kufor-maly':
+    default:
+      return ['kabinova']
+  }
+}
+
+// Inverse: derive the closest legacy single-select value from the multi-piece model
+// (kept so old saves / older app versions reading `luggageType` stay consistent)
+export function piecesToLegacyLuggage(pieces: LuggagePiece[]): LuggageType {
+  if (pieces.includes('odbavena')) return 'kufor-velky'
+  if (pieces.includes('kabinova')) {
+    return pieces.includes('osobna') ? 'ruksak+kabinka' : 'kufor-maly'
+  }
+  return 'ruksak'
+}
 
 export const CATEGORY_ORDER = [
   'doklady',
@@ -89,40 +111,57 @@ export function generatePackingList(cfg: TripConfig): PackItem[] {
   const byTrainBus = cfg.transport === 'vlak' || cfg.transport === 'autobus'
 
   if (flying) {
-    const luggage: LuggageType = cfg.luggageType ?? 'kufor-maly'
+    const pieces: LuggagePiece[] = cfg.luggagePieces?.length
+      ? cfg.luggagePieces
+      : legacyLuggageToPieces(cfg.luggageType)
     const fi = cfg.flightInfo ?? null
+    const hasOsobna = pieces.includes('osobna')
+    const hasKabinova = pieces.includes('kabinova')
+    const hasOdbavena = pieces.includes('odbavena')
 
-    if (luggage === 'ruksak') {
-      add('batazina', 'Cestovný ruksak', undefined, 'uisti sa, že spĺňa rozmery leteckej spoločnosti')
-      add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
-      add('batazina', 'Zámok na ruksak')
-    } else if (luggage === 'ruksak+kabinka') {
-      add('batazina', 'Malý batoh (osobná batožina)', undefined, fi ? fi.cabinBagSize : 'do 40×20×25 cm')
-      add('batazina', 'Kabínkový kufrík', undefined, fi ? fi.cabinBagSize : 'skontroluj rozmery')
-      add('batazina', 'Kombináciový zámok na kufrík')
-    } else if (luggage === 'kufor-maly') {
-      add('batazina', 'Malý kufrík (kabínový)', undefined, fi ? fi.cabinBagSize : 'do 55×40×20 cm, skontroluj rozmery')
-      add('batazina', 'Kombináciový zámok TSA')
-      if (fi?.cabinBagWeight) add('batazina', `Kufrík vážiť max. ${fi.cabinBagWeight} kg`, undefined, 'skontroluj pred odchodom')
-    } else {
-      add('batazina', 'Veľký kufrík (odbavená batožina)', undefined,
-        fi?.checkedBagWeight
-          ? `max. ${fi.checkedBagWeight} kg — ${fi.airline}`
-          : 'skontroluj limit u leteckej spoločnosti',
-      )
-      add('batazina', 'Batoh / taška ako príručná batožina')
-      add('batazina', 'Kombináciový zámok TSA')
-      add('batazina', 'Menovka na kufrík', undefined, 'meno + telefón')
-      if (fi?.cabinBagWeight) add('batazina', `Príručná batožina max. ${fi.cabinBagWeight} kg`)
+    // Airline limits summary — first item so the user sees it immediately
+    if (fi) {
+      const limits = [
+        `kabína ${fi.cabinBagSize}${fi.cabinBagWeight ? ` / max ${fi.cabinBagWeight} kg` : ''}`,
+        fi.checkedBagWeight ? `odbavená max ${fi.checkedBagWeight} kg` : '',
+      ].filter(Boolean).join(' · ')
+      add('batazina', `Limity batožiny — ${fi.airline}`, undefined, limits)
     }
 
-    if (fi) {
-      if (cfg.hasPriority && fi.priorityBoardingNote) {
-        add('batazina', 'Priority boarding doklad', undefined, fi.priorityBoardingNote)
+    if (hasOsobna) {
+      // Personal-item dimensions differ per airline (Ryanair 40×20×25, Wizz 40×30×20, easyJet 45×36×20…)
+      // so never hard-code them — reference the resolved airline when we have one
+      const osobnaNote = hasKabinova || hasOdbavena
+        ? fi
+          ? `pod sedadlo — over rozmery osobnej batožiny (${fi.airline})`
+          : 'pod sedadlo — over rozmery u leteckej spoločnosti'
+        : 'jediná batožina — maximálna efektívnosť!'
+      add('batazina', 'Malý batoh / ruksak (osobná batožina)', undefined, osobnaNote)
+      if (!hasKabinova && !hasOdbavena) {
+        add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
       }
-      if (cfg.hasPaidBag && luggage !== 'kufor-velky') {
-        add('batazina', 'Potvrdenie o zaplatení extra batožiny', undefined, 'stiahni do telefónu')
-      }
+    }
+    if (hasKabinova) {
+      add('batazina', 'Kabínový kufrík', undefined,
+        fi ? `${fi.cabinBagSize}${fi.cabinBagWeight ? ` / max ${fi.cabinBagWeight} kg — ${fi.airline}` : ` — ${fi.airline}`}` : 'do 55×40×20 cm, skontroluj rozmery')
+      add('batazina', 'Kombináciový zámok na kufrík')
+    }
+    if (hasOdbavena) {
+      add('batazina', 'Odbavený kufor', undefined,
+        fi?.checkedBagWeight
+          ? `max. ${fi.checkedBagWeight} kg — ${fi.airline}`
+          : 'skontroluj váhový limit u leteckej spoločnosti')
+      add('batazina', 'Kombináciový zámok TSA')
+      add('batazina', 'Menovka na kufor', undefined, 'meno + telefón')
+      add('batazina', 'Odvážiť kufor pred odchodom', undefined,
+        fi?.checkedBagWeight ? `limit ${fi.checkedBagWeight} kg — nadváha je drahá` : 'nadváha je drahá')
+    }
+
+    if (fi && cfg.hasPriority && fi.priorityBoardingNote) {
+      add('batazina', 'Priority boarding doklad', undefined, fi.priorityBoardingNote)
+    }
+    if (cfg.hasPaidBag) {
+      add('batazina', 'Potvrdenie o zaplatení extra batožiny', undefined, 'stiahni do telefónu')
     }
 
     add('batazina', 'Balíčky < 100 ml v zip-lock vrecku', undefined, 'tekutiny do kabíny')

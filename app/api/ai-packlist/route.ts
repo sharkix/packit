@@ -60,12 +60,20 @@ function buildPrompt(cfg: TripConfig): string {
     ? cfg.tripTypes.map(t => ({ more: 'more/pláž', hory: 'hory/turistika', mesto: 'mesto/kultúra' }[t])).join(' + ')
     : 'všeobecná dovolenka'
 
-  const luggageText = {
-    'ruksak': 'len cestovný ruksak (obmedzený priestor!)',
-    'ruksak+kabinka': 'malý batoh + kabínkový kufrík',
-    'kufor-maly': 'malý kabínový kufrík',
-    'kufor-velky': 'veľký kufrík v hold',
-  }[cfg.luggageType]
+  const pieceLabels: Record<string, string> = {
+    osobna: 'malý ruksak (osobná batožina pod sedadlo)',
+    kabinova: 'kabínový kufrík',
+    odbavena: 'odbavený kufor',
+  }
+  const luggageText = cfg.luggagePieces?.length
+    ? cfg.luggagePieces.map((p) => pieceLabels[p] ?? p).join(' + ') +
+      (cfg.luggagePieces.length === 1 && cfg.luggagePieces[0] === 'osobna' ? ' (VEĽMI obmedzený priestor!)' : '')
+    : {
+        'ruksak': 'len cestovný ruksak (obmedzený priestor!)',
+        'ruksak+kabinka': 'malý batoh + kabínkový kufrík',
+        'kufor-maly': 'malý kabínový kufrík',
+        'kufor-velky': 'veľký kufrík v hold',
+      }[cfg.luggageType]
 
   const extrasText = [
     cfg.carRental && 'požičané auto',
@@ -140,8 +148,9 @@ POKYNY:
    - Zdravotné odporúčania: ak sú uvedené vakcíny, pridaj "Potvrdenie o očkovaní" alebo príslušné lieky
    - Lokálne kultúrne požiadavky: dress code, špeciálne povolenia, zálohy
    - Špecifiká destinácie, terén, sezóna, aktivity
-   - Ak ruksak: maximálna efektívnosť, odľahčenie
+   - Ak LEN osobná batožina (malý ruksak bez kabínovej/odbavenej): maximálna efektívnosť, odľahčenie, minimalizmus
    - DOPRAVA: ak ide autom — povinná výbava, prestávky, občerstvenie; ak vlakom/autobusom — zabezpečenie batožiny; NIKDY nespomínaj letecké limity ak sa neletí
+   - BATOŽINOVÉ LIMITY AEROLÍNIE: ak sú uvedené konkrétne rozmery/váhy (z čísla letu alebo AI batožiny), AKTÍVNE s nimi pracuj — prispôsob množstvo oblečenia objemu batožiny, navrhni vyhodenie objemných položiek pri malej batožine, pri prísnych limitoch (napr. Ryanair/Wizz 10 kg) upozorni na váženie
    - UBYTOVANIE: privát/apartmán = doniesť uteráky, hygienu, základné potraviny; kemp = kompletné vybavenie; hotel = netreba uteráky ani sušič
 2. V "removals" označ položky zbytočné pre túto konkrétnu cestu (napr. letecké položky ak sa neletí, uteráky ak je hotel).
 3. V "highlights" vyber 3-6 KĽÚČOVÝCH položiek (pas, redukcia ak treba, lieky, SPF, atď.).
