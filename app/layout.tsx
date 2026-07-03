@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans } from 'next/font/google'
+import { LangProvider } from '@/lib/i18n'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -24,7 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="sk" className={`bg-background ${dmSans.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <LangProvider>{children}</LangProvider>
+      </body>
     </html>
   )
 }

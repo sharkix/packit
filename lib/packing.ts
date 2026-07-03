@@ -10,9 +10,30 @@ export const CATEGORY_ORDER = [
   'plaz',
   'hory',
   'mesto',
+  'auto',
+  'geocaching',
+  'vylet',
   'predodchodom',
 ] as const
 
+// Category icon names (lucide-react icon names)
+export const CATEGORY_ICONS: Record<string, string> = {
+  doklady: 'FileText',
+  oblecenie: 'Shirt',
+  obuv: 'Footprints',
+  hygiena: 'Sparkles',
+  lekarnicka: 'HeartPulse',
+  elektronika: 'Smartphone',
+  plaz: 'Waves',
+  hory: 'Mountain',
+  mesto: 'Building2',
+  auto: 'Car',
+  geocaching: 'Compass',
+  vylet: 'Map',
+  predodchodom: 'CheckSquare',
+}
+
+// Labels used server-side (SK default). UI uses i18n context instead.
 export const CATEGORY_LABELS: Record<string, string> = {
   doklady: 'Doklady a peniaze',
   oblecenie: 'Oblečenie',
@@ -23,6 +44,9 @@ export const CATEGORY_LABELS: Record<string, string> = {
   plaz: 'Pláž a voda',
   hory: 'Hory a outdoor',
   mesto: 'Mesto a výlety',
+  auto: 'Požičané auto',
+  geocaching: 'Geocaching',
+  vylet: 'Fakultatívny výlet',
   predodchodom: 'Pred odchodom',
 }
 
@@ -163,6 +187,40 @@ export function generatePackingList(cfg: TripConfig): PackItem[] {
     add('mesto', 'Malý batoh / crossbody taška')
     add('mesto', 'Fľaša na vodu')
     add('mesto', 'Vstupenky / rezervácie', undefined, 'stiahni si ich offline')
+  }
+
+  // ── Požičané auto ──────────────────────────────────────────
+  if (cfg.carRental) {
+    add('auto', 'Vodičský preukaz', undefined, 'medzinárodný, ak treba')
+    add('auto', 'Kreditná karta', undefined, 'na depozit pri prenájme')
+    add('auto', 'Zákaznícke číslo / rezervácia', undefined, 'stiahni offline')
+    add('auto', 'Plán cesty / GPS / offline mapy')
+    add('auto', 'Voda a občerstvenie na cestu')
+    add('auto', 'Nabíjačka do auta / redukcia')
+    add('auto', 'Lekárnička do auta', undefined, 'povinná v niektorých krajinách')
+    add('auto', 'Reflexná vesta', undefined, 'povinná v niektorých krajinách')
+  }
+
+  // ── Geocaching ─────────────────────────────────────────────
+  if (cfg.geocaching) {
+    add('geocaching', 'Aplikácia Geocaching (c:geo / official)', undefined, 'nainštalovaná a prihlásená')
+    add('geocaching', 'Premium členstvo / offline mapy')
+    add('geocaching', 'Tužka / pero', undefined, 'na podpis do logbooku')
+    add('geocaching', 'Malé predmety na výmenu (TOTT)')
+    add('geocaching', 'Vodeodolné vrecko na telefón')
+    add('geocaching', 'Pohodlná obuv do terénu')
+    add('geocaching', 'Baterka', undefined, 'pre nočné kešky')
+  }
+
+  // ── Fakultatívny výlet ─────────────────────────────────────
+  if (cfg.optionalTrip) {
+    add('vylet', 'Rezervácia / lístok na výlet', undefined, 'stiahni offline')
+    add('vylet', 'Pohodlná obuv na chôdzu')
+    add('vylet', 'Batoh na deň')
+    add('vylet', 'Fľaša na vodu')
+    add('vylet', 'Opaľovací krém / šiltovka', undefined, 'ak je slnečno')
+    add('vylet', 'Hotovosť na drobné', undefined, 'vstupné, suveníry')
+    add('vylet', 'Nabíjaná powerbanka', undefined, 'na fotenie')
   }
 
   // ── Pred odchodom ──────────────────────────────────────────

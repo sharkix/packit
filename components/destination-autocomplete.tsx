@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { MapPin, Loader2 } from 'lucide-react'
 import { searchDestinations } from '@/lib/weather'
 import type { GeoResult } from '@/lib/types'
+import { useLang } from '@/lib/i18n'
 
 function useDebouncedValue(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value)
@@ -25,6 +26,7 @@ export function DestinationAutocomplete({
   selected: GeoResult | null
   onSelect: (dest: GeoResult | null) => void
 }) {
+  const { t, lang } = useLang()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -32,9 +34,9 @@ export function DestinationAutocomplete({
 
   const { data: results, isLoading } = useSWR(
     debouncedQuery.trim().length >= 2 && open
-      ? ['geocode', debouncedQuery.trim()]
+      ? ['geocode', debouncedQuery.trim(), lang]
       : null,
-    ([, q]) => searchDestinations(q),
+    ([, q, l]) => searchDestinations(q, l),
     { keepPreviousData: true },
   )
 
@@ -55,7 +57,7 @@ export function DestinationAutocomplete({
         htmlFor="destination"
         className="mb-1.5 block text-sm font-semibold"
       >
-        Destinácia
+        {t.destination}
       </label>
       <div className="relative">
         <MapPin
@@ -70,7 +72,7 @@ export function DestinationAutocomplete({
           aria-controls="destination-listbox"
           aria-autocomplete="list"
           autoComplete="off"
-          placeholder="Kam cestuješ? Napr. Chorvátsko, Vysoké Tatry…"
+          placeholder={t.destinationPlaceholder}
           value={displayValue}
           onChange={(e) => {
             onSelect(null)
@@ -100,7 +102,7 @@ export function DestinationAutocomplete({
               setOpen(false)
             }
           }}
-          className="w-full rounded-lg border border-input bg-card py-3 pl-10 pr-10 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+          className="w-full rounded-xl border border-input bg-card py-3 pl-10 pr-10 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
         />
         {isLoading && (
           <Loader2
@@ -114,7 +116,7 @@ export function DestinationAutocomplete({
         <ul
           id="destination-listbox"
           role="listbox"
-          className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+          className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg"
         >
           {results.map((r, i) => (
             <li key={r.id} role="option" aria-selected={i === activeIndex}>

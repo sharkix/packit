@@ -44,6 +44,9 @@ export interface TripConfig {
   gender: Gender
   tripTypes: TripType[]
   weather: WeatherSummary | null
+  carRental: boolean
+  geocaching: boolean
+  optionalTrip: boolean
 }
 
 export interface PackItem {
