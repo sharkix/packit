@@ -17,9 +17,10 @@ import { DestinationAutocomplete } from './destination-autocomplete'
 import { DateRangePicker } from './date-range-picker'
 import { WeatherCard } from './weather-card'
 import { PackingList } from './packing-list'
+import { LuggagePicker } from './luggage-picker'
 import { fetchWeather } from '@/lib/weather'
 import { generatePackingList } from '@/lib/packing'
-import type { GeoResult, Gender, PackItem, TripType } from '@/lib/types'
+import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo } from '@/lib/types'
 import { useLang } from '@/lib/i18n'
 
 function useTripTypes(
@@ -52,6 +53,11 @@ export function TripPlanner() {
   const [carRental, setCarRental] = useState(false)
   const [geocaching, setGeocaching] = useState(false)
   const [optionalTrip, setOptionalTrip] = useState(false)
+  const [luggageType, setLuggageType] = useState<LuggageType>('kufor-maly')
+  const [flightNumber, setFlightNumber] = useState('')
+  const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null)
+  const [hasPriority, setHasPriority] = useState(false)
+  const [hasPaidBag, setHasPaidBag] = useState(false)
   const [items, setItems] = useState<PackItem[] | null>(null)
 
   const {
@@ -102,6 +108,11 @@ export function TripPlanner() {
       carRental,
       geocaching,
       optionalTrip,
+      luggageType,
+      flightNumber: flightNumber || undefined,
+      flightInfo: flightInfo ?? undefined,
+      hasPriority,
+      hasPaidBag,
     })
     setItems(list)
   }
@@ -279,6 +290,21 @@ export function TripPlanner() {
           ))}
         </div>
       </fieldset>
+
+      <LuggagePicker
+        luggageType={luggageType}
+        flightNumber={flightNumber}
+        flightInfo={flightInfo}
+        hasPriority={hasPriority}
+        hasPaidBag={hasPaidBag}
+        onChange={(v) => {
+          setLuggageType(v.luggageType)
+          setFlightNumber(v.flightNumber)
+          setFlightInfo(v.flightInfo)
+          setHasPriority(v.hasPriority)
+          setHasPaidBag(v.hasPaidBag)
+        }}
+      />
 
       {/* Extras */}
       <fieldset>

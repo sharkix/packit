@@ -11,6 +11,18 @@ export interface GeoResult {
 
 export type TripType = 'more' | 'hory' | 'mesto'
 export type Gender = 'muz' | 'zena' | 'neuvedene'
+export type LuggageType = 'ruksak' | 'ruksak+kabinka' | 'kufor-maly' | 'kufor-velky'
+
+export interface FlightInfo {
+  flightNumber: string          // e.g. "FR1234"
+  airline: string               // e.g. "Ryanair"
+  iata: string                  // e.g. "FR"
+  cabinBagSize: string          // e.g. "40×20×25 cm"
+  cabinBagWeight?: number       // kg
+  checkedBagWeight?: number     // kg, if paid
+  priorityBoardingNote?: string
+  source: 'api' | 'manual' | 'known'
+}
 
 export interface DailyWeather {
   date: string
@@ -47,6 +59,11 @@ export interface TripConfig {
   carRental: boolean
   geocaching: boolean
   optionalTrip: boolean
+  luggageType: LuggageType
+  flightNumber?: string
+  flightInfo?: FlightInfo | null
+  hasPriority: boolean
+  hasPaidBag: boolean
 }
 
 export interface PackItem {

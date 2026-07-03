@@ -80,6 +80,7 @@ const SK = {
   catGeocaching: 'Geocaching',
   catVylet: 'Fakultatívny výlet',
   catPredodchodom: 'Pred odchodom',
+  catBatazina: 'Batožina',
 } as const
 
 const EN: typeof SK = {
@@ -158,6 +159,7 @@ const EN: typeof SK = {
   catGeocaching: 'Geocaching',
   catVylet: 'Optional excursion',
   catPredodchodom: 'Before departure',
+  catBatazina: 'Luggage',
 }
 
 export const TRANSLATIONS = { sk: SK, en: EN }

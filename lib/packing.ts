@@ -1,7 +1,8 @@
-import type { PackItem, TripConfig } from './types'
+import type { PackItem, TripConfig, LuggageType } from './types'
 
 export const CATEGORY_ORDER = [
   'doklady',
+  'batazina',
   'oblecenie',
   'obuv',
   'hygiena',
@@ -19,6 +20,7 @@ export const CATEGORY_ORDER = [
 // Category icon names (lucide-react icon names)
 export const CATEGORY_ICONS: Record<string, string> = {
   doklady: 'FileText',
+  batazina: 'Luggage',
   oblecenie: 'Shirt',
   obuv: 'Footprints',
   hygiena: 'Sparkles',
@@ -36,6 +38,7 @@ export const CATEGORY_ICONS: Record<string, string> = {
 // Labels used server-side (SK default). UI uses i18n context instead.
 export const CATEGORY_LABELS: Record<string, string> = {
   doklady: 'Doklady a peniaze',
+  batazina: 'Batožina',
   oblecenie: 'Oblečenie',
   obuv: 'Obuv',
   hygiena: 'Hygiena',
@@ -79,6 +82,47 @@ export function generatePackingList(cfg: TripConfig): PackItem[] {
   const add = (category: string, name: string, qty?: number, note?: string) => {
     items.push({ id: `i${n++}`, category, name, qty, note, checked: false })
   }
+
+  // ── Batožina ───────────────────────────────────────────────
+  const luggage: LuggageType = cfg.luggageType ?? 'kufor-maly'
+  const fi = cfg.flightInfo ?? null
+
+  if (luggage === 'ruksak') {
+    add('batazina', 'Cestovný ruksak', undefined, 'uisti sa, že spĺňa rozmery leteckej spoločnosti')
+    add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
+    add('batazina', 'Zámok na ruksak')
+  } else if (luggage === 'ruksak+kabinka') {
+    add('batazina', 'Malý batoh (osobná batožina)', undefined, fi ? fi.cabinBagSize : 'do 40×20×25 cm')
+    add('batazina', 'Kabínkový kufrík', undefined, fi ? fi.cabinBagSize : 'skontroluj rozmery')
+    add('batazina', 'Kombináciový zámok na kufrík')
+  } else if (luggage === 'kufor-maly') {
+    add('batazina', 'Malý kufrík (kabínový)', undefined, fi ? fi.cabinBagSize : 'do 55×40×20 cm, skontroluj rozmery')
+    add('batazina', 'Kombináciový zámok TSA')
+    if (fi?.cabinBagWeight) add('batazina', `Kufrík vážiť max. ${fi.cabinBagWeight} kg`, undefined, 'skontroluj pred odchodom')
+  } else {
+    // kufor-velky
+    add('batazina', 'Veľký kufrík (odbavená batožina)', undefined,
+      fi?.checkedBagWeight
+        ? `max. ${fi.checkedBagWeight} kg — ${fi.airline}`
+        : 'skontroluj limit u leteckej spoločnosti',
+    )
+    add('batazina', 'Batoh / taška ako príručná batožina')
+    add('batazina', 'Kombináciový zámok TSA')
+    add('batazina', 'Menovka na kufrík', undefined, 'meno + telefón')
+    if (fi?.cabinBagWeight) add('batazina', `Príručná batožina max. ${fi.cabinBagWeight} kg`)
+  }
+
+  if (fi) {
+    if (cfg.hasPriority && fi.priorityBoardingNote) {
+      add('batazina', 'Priority boarding doklad', undefined, fi.priorityBoardingNote)
+    }
+    if (cfg.hasPaidBag && luggage !== 'kufor-velky') {
+      add('batazina', 'Potvrdenie o zaplatení extra batožiny', undefined, 'stiahni do telefónu')
+    }
+  }
+
+  add('batazina', 'Balíčky < 100 ml v zip-lock vrecku', undefined, 'tekutiny do kabíny')
+  add('batazina', 'Krabička na šperky / cennosti')
 
   // ── Doklady a peniaze ──────────────────────────────────────
   add('doklady', 'Občiansky preukaz / pas')

@@ -7,6 +7,7 @@ import {
   PartyPopper,
   Printer,
   FileText,
+  Luggage,
   Shirt,
   Footprints,
   Sparkles,
@@ -27,6 +28,7 @@ import { useLang } from '@/lib/i18n'
 
 const CAT_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>> = {
   doklady: FileText,
+  batazina: Luggage,
   oblecenie: Shirt,
   obuv: Footprints,
   hygiena: Sparkles,
@@ -43,6 +45,7 @@ const CAT_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 'ar
 
 const CAT_COLOR_MAP: Record<string, string> = {
   doklady: 'text-amber-600',
+  batazina: 'text-slate-600',
   oblecenie: 'text-sky-600',
   obuv: 'text-orange-500',
   hygiena: 'text-pink-500',
@@ -85,6 +88,7 @@ export function PackingList({
   function catLabel(cat: string): string {
     const map: Record<string, string> = {
       doklady: t.catDoklady,
+      batazina: t.catBatazina,
       oblecenie: t.catOblecenie,
       obuv: t.catObuv,
       hygiena: t.catHygiena,
