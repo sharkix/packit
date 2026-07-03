@@ -109,7 +109,7 @@ export function PackingList({
   return (
     <div className="packing-print-root flex flex-col gap-4">
       {/* Progress bar – sticky, hidden when printing */}
-      <div className="print:hidden sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-3 backdrop-blur-sm">
+      <div className="print:hidden sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-2.5 backdrop-blur-sm sm:-mx-0 sm:rounded-xl sm:border sm:border-border sm:shadow-sm">
         <div className="mb-1.5 flex items-center justify-between text-sm">
           <span className="font-semibold">
             {pct === 100 ? (
@@ -414,7 +414,7 @@ function PackingItem({
         type="button"
         onClick={() => onDelete(item.id)}
         aria-label={`${t.removeItem} ${item.name}`}
-        className="print:hidden shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+        className="print:hidden shrink-0 rounded-md p-1.5 text-muted-foreground/40 transition-colors hover:text-destructive focus:text-destructive active:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
       >
         <Trash2 className="size-4" aria-hidden="true" />
       </button>

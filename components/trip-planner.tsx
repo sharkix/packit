@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import useSWR from 'swr'
 import {
   Luggage,
@@ -27,6 +27,38 @@ import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import type { AiLookupResult } from '@/app/api/ai-lookup/route'
 import { useLang } from '@/lib/i18n'
 
+const STORAGE_KEY = 'zbalene_v1'
+
+interface PersistedState {
+  destination: GeoResult | null
+  startDate: string | null
+  endDate: string | null
+  startTime: string
+  endTime: string
+  gender: Gender
+  tripTypes: TripType[]
+  carRental: boolean
+  geocaching: boolean
+  optionalTrip: boolean
+  luggageType: LuggageType
+  flightNumber: string
+  flightInfo: FlightInfo | null
+  hasPriority: boolean
+  hasPaidBag: boolean
+  countryInfo: CountryInfo | null
+  items: PackItem[] | null
+}
+
+function loadPersistedState(): PersistedState | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as PersistedState) : null
+  } catch {
+    return null
+  }
+}
+
 function useTripTypes(
   t: ReturnType<typeof useLang>['t'],
 ): { value: TripType; label: string; icon: typeof Waves }[] {
@@ -46,6 +78,8 @@ export function TripPlanner() {
     { value: 'neuvedene', label: t.genderUnspecified },
   ]
 
+  // ── Initialise from localStorage ────────────────────────────
+  const [hydrated, setHydrated] = useState(false)
   const [destination, setDestination] = useState<GeoResult | null>(null)
   const [startDate, setStartDate] = useState<string | null>(null)
   const [endDate, setEndDate] = useState<string | null>(null)
@@ -68,6 +102,63 @@ export function TripPlanner() {
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
   const [countryInfoLoading, setCountryInfoLoading] = useState(false)
 
+  // Hydrate from localStorage on first client render
+  useEffect(() => {
+    const saved = loadPersistedState()
+    if (saved) {
+      if (saved.destination) setDestination(saved.destination)
+      if (saved.startDate) setStartDate(saved.startDate)
+      if (saved.endDate) setEndDate(saved.endDate)
+      if (saved.startTime) setStartTime(saved.startTime)
+      if (saved.endTime) setEndTime(saved.endTime)
+      if (saved.gender) setGender(saved.gender)
+      if (saved.tripTypes?.length) setTripTypes(saved.tripTypes)
+      setCarRental(saved.carRental ?? false)
+      setGeocaching(saved.geocaching ?? false)
+      setOptionalTrip(saved.optionalTrip ?? false)
+      if (saved.luggageType) setLuggageType(saved.luggageType)
+      if (saved.flightNumber) setFlightNumber(saved.flightNumber)
+      if (saved.flightInfo) setFlightInfo(saved.flightInfo)
+      setHasPriority(saved.hasPriority ?? false)
+      setHasPaidBag(saved.hasPaidBag ?? false)
+      if (saved.countryInfo) setCountryInfo(saved.countryInfo)
+      if (saved.items) setItems(saved.items)
+    }
+    setHydrated(true)
+  }, [])
+
+  // Persist to localStorage whenever relevant state changes
+  const persist = useCallback(() => {
+    if (!hydrated) return
+    const state: PersistedState = {
+      destination,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      gender,
+      tripTypes,
+      carRental,
+      geocaching,
+      optionalTrip,
+      luggageType,
+      flightNumber,
+      flightInfo,
+      hasPriority,
+      hasPaidBag,
+      countryInfo,
+      items,
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    } catch { /* quota exceeded — ignore */ }
+  }, [hydrated, destination, startDate, endDate, startTime, endTime, gender, tripTypes, carRental, geocaching, optionalTrip, luggageType, flightNumber, flightInfo, hasPriority, hasPaidBag, countryInfo, items])
+
+  useEffect(() => {
+    persist()
+  }, [persist])
+
+  // ── Weather ──────────────────────────────────────────────────
   const {
     data: weather,
     isLoading: weatherLoading,
@@ -80,13 +171,13 @@ export function TripPlanner() {
     { revalidateOnFocus: false },
   )
 
+  // ── AI Lookup ────────────────────────────────────────────────
   function triggerAiLookup(dest: GeoResult | null, fNumber?: string, fInfo?: FlightInfo | null, prio?: boolean, paidBag?: boolean) {
     if (!dest) {
       setCountryInfo(null)
       return
     }
     setCountryInfoLoading(true)
-    // Determine IATA from flightInfo or parse from flight number
     const iata = fInfo?.iata ?? (fNumber ? fNumber.replace(/\d+.*/, '').trim().toUpperCase() : undefined)
     fetch('/api/ai-lookup', {
       method: 'POST',
@@ -105,7 +196,6 @@ export function TripPlanner() {
     })
       .then((r) => r.json() as Promise<AiLookupResult>)
       .then((result) => {
-        // Map AiLookupResult to CountryInfo
         const ci: CountryInfo = {
           currency: result.currency,
           currencySymbol: result.currencySymbol,
@@ -149,15 +239,16 @@ export function TripPlanner() {
     triggerAiLookup(dest, flightNumber, flightInfo)
   }
 
-  function toggleTripType(t: TripType) {
+  function toggleTripType(type: TripType) {
     setTripTypesTouched(true)
     setTripTypes((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+      prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type],
     )
   }
 
   const canGenerate = destination && startDate && endDate && !weatherLoading
 
+  // ── Generate packlist ────────────────────────────────────────
   function generate() {
     if (!destination || !startDate || !endDate) return
 
@@ -181,13 +272,11 @@ export function TripPlanner() {
       countryInfo: countryInfo ?? null,
     }
 
-    // 1. Generate base list immediately
     const baseList = generatePackingList(cfg)
     setItems(baseList)
     setAiResult(null)
     setAiStatus('loading')
 
-    // 2. Fire AI personalisation in the background
     fetch('/api/ai-packlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -200,24 +289,14 @@ export function TripPlanner() {
       .then((result) => {
         setAiResult(result)
         setAiStatus('done')
-
-        // Merge AI additions and apply removals + highlights
         setItems((prev) => {
           if (!prev) return prev
-
-          // Apply removals
           const removed = new Set(result.removals.map((n) => n.toLowerCase()))
           let merged = prev.filter((i) => !removed.has(i.name.toLowerCase()))
-
-          // Apply highlights (add a marker via note prefix)
           const highlighted = new Set(result.highlights.map((n) => n.toLowerCase()))
           merged = merged.map((i) =>
-            highlighted.has(i.name.toLowerCase())
-              ? { ...i, highlight: true }
-              : i,
+            highlighted.has(i.name.toLowerCase()) ? { ...i, highlight: true } : i,
           )
-
-          // Add AI additions
           const additions: PackItem[] = result.additions.map((a, idx) => ({
             id: `ai${idx}`,
             category: a.category,
@@ -228,7 +307,6 @@ export function TripPlanner() {
             aiAdded: true,
             highlight: highlighted.has(a.name.toLowerCase()),
           }))
-
           return [...merged, ...additions]
         })
       })
@@ -258,17 +336,18 @@ export function TripPlanner() {
     return t.days5
   }
 
-  // ── Packlist view ──────────────────────────────────────────
+  // ── Packlist view ────────────────────────────────────────────
   if (items) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="print:hidden flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-bold text-balance">
+        {/* Header — stacks on mobile, row on sm+ */}
+        <div className="print:hidden flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-balance sm:text-xl">
               {destination?.name}
               {destination?.country ? `, ${destination.country}` : ''}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {startDate && endDate
                 ? `${new Date(startDate + 'T00:00:00').toLocaleDateString(lang === 'en' ? 'en-GB' : 'sk-SK')} – ${new Date(endDate + 'T00:00:00').toLocaleDateString(lang === 'en' ? 'en-GB' : 'sk-SK')}`
                 : ''}
@@ -277,7 +356,7 @@ export function TripPlanner() {
               {` · ${tripDays} ${dayLabel(tripDays)}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <LangToggle lang={lang} setLang={setLang} />
             <button
               type="button"
@@ -308,9 +387,7 @@ export function TripPlanner() {
           onToggle={(id) =>
             setItems(
               (prev) =>
-                prev?.map((i) =>
-                  i.id === id ? { ...i, checked: !i.checked } : i,
-                ) ?? null,
+                prev?.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) ?? null,
             )
           }
           onDelete={(id) =>
@@ -319,23 +396,13 @@ export function TripPlanner() {
           onAdd={(category, name) =>
             setItems((prev) =>
               prev
-                ? [
-                    ...prev,
-                    {
-                      id: `c${Date.now()}`,
-                      category,
-                      name,
-                      checked: false,
-                      custom: true,
-                    },
-                  ]
+                ? [...prev, { id: `c${Date.now()}`, category, name, checked: false, custom: true }]
                 : null,
             )
           }
           onQtyChange={(id, qty) =>
             setItems(
-              (prev) =>
-                prev?.map((i) => (i.id === id ? { ...i, qty } : i)) ?? null,
+              (prev) => prev?.map((i) => (i.id === id ? { ...i, qty } : i)) ?? null,
             )
           }
         />
@@ -343,10 +410,9 @@ export function TripPlanner() {
     )
   }
 
-  // ── Form view ──────────────────────────────────────────────
+  // ── Form view ────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-5">
-      {/* Language toggle in form */}
       <div className="flex justify-end">
         <LangToggle lang={lang} setLang={setLang} />
       </div>
@@ -380,9 +446,7 @@ export function TripPlanner() {
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold">
           {t.tripType}{' '}
-          <span className="font-normal text-muted-foreground">
-            {t.tripTypeHint}
-          </span>
+          <span className="font-normal text-muted-foreground">{t.tripTypeHint}</span>
         </legend>
         <div className="flex flex-wrap gap-2">
           {TRIP_TYPES.map(({ value, label, icon: Icon }) => {
@@ -440,38 +504,18 @@ export function TripPlanner() {
           setFlightInfo(v.flightInfo)
           setHasPriority(v.hasPriority)
           setHasPaidBag(v.hasPaidBag)
-          // Re-run AI lookup if flight info changed (new airline = new baggage rules)
           if (v.flightInfo?.iata !== flightInfo?.iata || v.flightNumber !== flightNumber) {
             triggerAiLookup(destination, v.flightNumber, v.flightInfo, v.hasPriority, v.hasPaidBag)
           }
         }}
       />
 
-      {/* Extras */}
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold">{t.extras}</legend>
         <div className="flex flex-col gap-2">
-          <ExtraToggle
-            icon={Car}
-            label={t.carRental}
-            note={t.carRentalNote}
-            checked={carRental}
-            onChange={setCarRental}
-          />
-          <ExtraToggle
-            icon={Compass}
-            label={t.geocaching}
-            note={t.geocachingNote}
-            checked={geocaching}
-            onChange={setGeocaching}
-          />
-          <ExtraToggle
-            icon={Map}
-            label={t.optionalTrip}
-            note={t.optionalTripNote}
-            checked={optionalTrip}
-            onChange={setOptionalTrip}
-          />
+          <ExtraToggle icon={Car} label={t.carRental} note={t.carRentalNote} checked={carRental} onChange={setCarRental} />
+          <ExtraToggle icon={Compass} label={t.geocaching} note={t.geocachingNote} checked={geocaching} onChange={setGeocaching} />
+          <ExtraToggle icon={Map} label={t.optionalTrip} note={t.optionalTripNote} checked={optionalTrip} onChange={setOptionalTrip} />
         </div>
       </fieldset>
 
@@ -493,7 +537,7 @@ export function TripPlanner() {
         type="button"
         onClick={generate}
         disabled={!canGenerate}
-        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40"
+        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40 active:opacity-80"
       >
         {weatherLoading ? (
           <>
@@ -532,7 +576,7 @@ function ExtraToggle({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 accent-[#0e7c86]"
+        className="mt-0.5 size-5 shrink-0 accent-[#0e7c86]"
       />
       <span className="flex items-start gap-2">
         <Icon className={`mt-0.5 size-4 shrink-0 ${checked ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
