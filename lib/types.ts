@@ -64,6 +64,35 @@ export interface TripConfig {
   flightInfo?: FlightInfo | null
   hasPriority: boolean
   hasPaidBag: boolean
+  countryInfo?: CountryInfo | null
+}
+
+export interface PlugAdapter {
+  type: string        // e.g. "Typ C", "Typ F"
+  voltage: string     // e.g. "230V"
+  frequency: string   // e.g. "50Hz"
+  needsAdapter: boolean
+  adapterNote?: string
+}
+
+export interface CountryInfo {
+  currency: string            // e.g. "Euro (EUR)"
+  currencySymbol: string      // e.g. "€"
+  cashTip: string             // e.g. "Karty sú bežné, hotovosť stačí na trhy"
+  plugAdapter: PlugAdapter
+  visaNote: string            // e.g. "Slovensko: bez víz (Schengen)"
+  safetyNote?: string
+  healthTips?: string[]       // e.g. ["Doporučená vakcína hepatitídy A"]
+  localTips?: string[]        // e.g. ["Záloha na fľaše", "Pitná voda z vodovodu"]
+  emergencyNumber?: string    // e.g. "112"
+  baggageInfo?: {             // AI-resolved airline baggage when number unknown
+    airline?: string
+    cabinSize?: string
+    cabinWeightKg?: number
+    checkedWeightKg?: number
+    priorityNote?: string
+    confidence: 'high' | 'medium' | 'low'
+  }
 }
 
 export interface PackItem {

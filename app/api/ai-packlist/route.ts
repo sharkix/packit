@@ -82,6 +82,22 @@ function buildPrompt(cfg: TripConfig): string {
       ? `Číslo letu: ${cfg.flightNumber}`
       : 'Doprava: letecky (bez špecifík letu)'
 
+  // Country info context
+  const ci = cfg.countryInfo
+  const countryContext = ci
+    ? [
+        `Mena: ${ci.currency} (${ci.currencySymbol}) — ${ci.cashTip}`,
+        `Elektrina: ${ci.plugAdapter.type}, ${ci.plugAdapter.voltage}/${ci.plugAdapter.frequency}${ci.plugAdapter.needsAdapter ? ` — TREBA REDUKCIU: ${ci.plugAdapter.adapterNote}` : ' — redukcia nie je potrebná'}`,
+        `Víza/vstup: ${ci.visaNote}`,
+        ci.safetyNote ? `Bezpečnosť: ${ci.safetyNote}` : '',
+        ci.healthTips?.length ? `Zdravie: ${ci.healthTips.join('; ')}` : '',
+        ci.localTips?.length ? `Miestne tipy: ${ci.localTips.join('; ')}` : '',
+        ci.baggageInfo?.airline
+          ? `AI batožina (${ci.baggageInfo.airline}): kabína ${ci.baggageInfo.cabinSize ?? '?'}${ci.baggageInfo.cabinWeightKg ? `, max ${ci.baggageInfo.cabinWeightKg} kg` : ''}${ci.baggageInfo.checkedWeightKg ? `, odbavená max ${ci.baggageInfo.checkedWeightKg} kg` : ''}`
+          : '',
+      ].filter(Boolean).join('\n- ')
+    : 'Nie sú dostupné.'
+
   return `Si expert na cestovanie a personalizované packing listy. Dostaneš základnú štruktúru packlistu a musíš navrhnúť DOPLNKY a ÚPRAVY, aby bol list čo najlepšie prispôsobený tejto konkrétnej ceste.
 
 INFORMÁCIE O CESTE:
@@ -96,16 +112,20 @@ INFORMÁCIE O CESTE:
 - ${flightText}
 - Extras: ${extrasText}
 
+KRAJINOVÉ INFORMÁCIE (zistené AI):
+- ${countryContext}
+
 POKYNY:
-1. V "additions" navrhni konkrétne položky, ktoré základný zoznam vynechal pre TÚTO destináciu, počasie, typ cesty a osobu. Myslí na:
-   - Špecifiká destinácie (napr. pre Taliansko: adapter Schuko; pre Grécko: opaľovanie SPF50+; pre Japonsko: tkaničkové papierové obrúsky)
-   - Lokálne pravidlá, kultúru, terén
-   - Konkrétne aktivity (napr. vstupné do chrámu → zakryté plecia/kolená; via ferrata → karabíny)
-   - Ak ruksak, maximálna efektívnosť priestoru
-   - Sezónne špeciality
-2. V "removals" označ položky, ktoré základný zoznam obsahuje, ale pre túto cestu sú zbytočné alebo nevhodné.
-3. V "highlights" vyber 3-6 položiek, ktoré sú pri tejto ceste KĽÚČOVÉ (napr. "pas" pre zahraničie, "repelent" pre tropické klímy).
-4. Buď konkrétny, nie generický. Lepšie menej ale relevantných položiek ako veľa zbytočných.
+1. V "additions" navrhni konkrétne položky, ktoré základný zoznam vynechal. Zvaž:
+   - Ak TREBA REDUKCIU (podľa krajinových info): pridaj "Cestovná redukcia do zásuvky (Typ X)" do kategórie "elektronika"
+   - Ak mena NIE JE euro a karty nemusia fungovať: pridaj "Hotovosť v [mene]" do kategórie "doklady"
+   - Zdravotné odporúčania: ak sú uvedené vakcíny, pridaj "Potvrdenie o očkovaní" alebo príslušné lieky
+   - Lokálne kultúrne požiadavky: dress code, špeciálne povolenia, zálohy
+   - Špecifiká destinácie, terén, sezóna, aktivity
+   - Ak ruksak: maximálna efektívnosť, odľahčenie
+2. V "removals" označ položky zbytočné pre túto konkrétnu cestu.
+3. V "highlights" vyber 3-6 KĽÚČOVÝCH položiek (pas, redukcia ak treba, lieky, SPF, atď.).
+4. Buď konkrétny a relevantný — kvalita nad kvantitou.
 5. Všetky texty píš po SLOVENSKY.`
 }
 

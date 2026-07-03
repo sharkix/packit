@@ -19,10 +19,12 @@ import { WeatherCard } from './weather-card'
 import { PackingList } from './packing-list'
 import { LuggagePicker } from './luggage-picker'
 import { AiStatus } from './ai-status'
+import { CountryInfoCard } from './country-info-card'
 import { fetchWeather } from '@/lib/weather'
 import { generatePackingList } from '@/lib/packing'
-import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo } from '@/lib/types'
+import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo, CountryInfo } from '@/lib/types'
 import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
+import type { AiLookupResult } from '@/app/api/ai-lookup/route'
 import { useLang } from '@/lib/i18n'
 
 function useTripTypes(
@@ -63,6 +65,8 @@ export function TripPlanner() {
   const [items, setItems] = useState<PackItem[] | null>(null)
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [aiResult, setAiResult] = useState<AiPacklistResult | null>(null)
+  const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
+  const [countryInfoLoading, setCountryInfoLoading] = useState(false)
 
   const {
     data: weather,
@@ -76,6 +80,61 @@ export function TripPlanner() {
     { revalidateOnFocus: false },
   )
 
+  function triggerAiLookup(dest: GeoResult | null, fNumber?: string, fInfo?: FlightInfo | null, prio?: boolean, paidBag?: boolean) {
+    if (!dest) {
+      setCountryInfo(null)
+      return
+    }
+    setCountryInfoLoading(true)
+    // Determine IATA from flightInfo or parse from flight number
+    const iata = fInfo?.iata ?? (fNumber ? fNumber.replace(/\d+.*/, '').trim().toUpperCase() : undefined)
+    fetch('/api/ai-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        countryCode: dest.country_code,
+        country: dest.country,
+        destination: dest.name,
+        flightIata: iata,
+        flightNumber: fNumber || undefined,
+        hasPriority: prio ?? hasPriority,
+        hasPaidBag: paidBag ?? hasPaidBag,
+        luggageType,
+        lang,
+      }),
+    })
+      .then((r) => r.json() as Promise<AiLookupResult>)
+      .then((result) => {
+        // Map AiLookupResult to CountryInfo
+        const ci: CountryInfo = {
+          currency: result.currency,
+          currencySymbol: result.currencySymbol,
+          cashTip: result.cashTip,
+          plugAdapter: result.plugAdapter,
+          visaNote: result.visaNote,
+          safetyNote: result.safetyNote,
+          healthTips: result.healthTips,
+          localTips: result.localTips,
+          emergencyNumber: result.emergencyNumber,
+          baggageInfo: result.baggageInfo
+            ? {
+                airline: result.baggageInfo.airline,
+                cabinSize: result.baggageInfo.cabinSize,
+                cabinWeightKg: result.baggageInfo.cabinWeightKg,
+                checkedWeightKg: result.baggageInfo.checkedWeightKg,
+                priorityNote: result.baggageInfo.priorityNote,
+                confidence: result.baggageInfo.confidence,
+              }
+            : undefined,
+        }
+        setCountryInfo(ci)
+        setCountryInfoLoading(false)
+      })
+      .catch(() => {
+        setCountryInfoLoading(false)
+      })
+  }
+
   function handleDestinationSelect(dest: GeoResult | null) {
     setDestination(dest)
     if (dest && !tripTypesTouched) {
@@ -87,6 +146,7 @@ export function TripPlanner() {
         setTripTypes(['mesto'])
       }
     }
+    triggerAiLookup(dest, flightNumber, flightInfo)
   }
 
   function toggleTripType(t: TripType) {
@@ -118,6 +178,7 @@ export function TripPlanner() {
       flightInfo: flightInfo ?? undefined,
       hasPriority,
       hasPaidBag,
+      countryInfo: countryInfo ?? null,
     }
 
     // 1. Generate base list immediately
@@ -308,6 +369,14 @@ export function TripPlanner() {
         }}
       />
 
+      {(countryInfo || countryInfoLoading) && (
+        <CountryInfoCard
+          info={countryInfo}
+          isLoading={countryInfoLoading}
+          lang={lang}
+        />
+      )}
+
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold">
           {t.tripType}{' '}
@@ -371,6 +440,10 @@ export function TripPlanner() {
           setFlightInfo(v.flightInfo)
           setHasPriority(v.hasPriority)
           setHasPaidBag(v.hasPaidBag)
+          // Re-run AI lookup if flight info changed (new airline = new baggage rules)
+          if (v.flightInfo?.iata !== flightInfo?.iata || v.flightNumber !== flightNumber) {
+            triggerAiLookup(destination, v.flightNumber, v.flightInfo, v.hasPriority, v.hasPaidBag)
+          }
         }}
       />
 
