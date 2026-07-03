@@ -1,0 +1,43 @@
+name: Auto Merge on Approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Enable auto-merge after approval
+    runs-on: ubuntu-latest
+    if: github.event.review.state == 'approved'
+    steps:
+      - name: Enable auto-merge (squash)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number,
+              auto_merge: { merge_method: 'squash' },
+            }).catch(() => {
+              // Fallback: use gh CLI via shell if GraphQL auto-merge is needed
+              console.log('auto_merge via REST not supported, will use gh CLI');
+            });
+
+      - name: Merge PR via gh CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --repo ${{ github.repository }} \
+            --squash \
+            --auto \
+            --delete-branch
