@@ -364,7 +364,7 @@ export function LuggagePicker({
             type="checkbox"
             checked={hasPriority}
             onChange={(e) => handlePriority(e.target.checked)}
-            className="size-4 shrink-0 accent-[#0e7c86]"
+            className="size-5 shrink-0 accent-[#0e7c86]"
           />
           <span>
             <span className="block text-sm font-medium">
@@ -386,7 +386,7 @@ export function LuggagePicker({
               type="checkbox"
               checked={hasPaidBag}
               onChange={(e) => handlePaidBag(e.target.checked)}
-              className="size-4 shrink-0 accent-[#0e7c86]"
+              className="size-5 shrink-0 accent-[#0e7c86]"
             />
             <span>
               <span className="block text-sm font-medium">

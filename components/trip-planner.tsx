@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import useSWR from 'swr'
 import {
   Luggage,
@@ -12,6 +12,14 @@ import {
   Car,
   Compass,
   Map,
+  Plane,
+  TrainFront,
+  Bus,
+  MoreHorizontal,
+  Hotel,
+  Home,
+  Tent,
+  ListChecks,
 } from 'lucide-react'
 import { DestinationAutocomplete } from './destination-autocomplete'
 import { DateRangePicker } from './date-range-picker'
@@ -22,10 +30,47 @@ import { AiStatus } from './ai-status'
 import { CountryInfoCard } from './country-info-card'
 import { fetchWeather } from '@/lib/weather'
 import { generatePackingList } from '@/lib/packing'
-import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo, CountryInfo } from '@/lib/types'
+import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo, CountryInfo, TransportMode, Accommodation } from '@/lib/types'
 import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import type { AiLookupResult } from '@/app/api/ai-lookup/route'
 import { useLang } from '@/lib/i18n'
+
+const STORAGE_KEY = 'zbalene_v1'
+
+interface PersistedState {
+  destination: GeoResult | null
+  startDate: string | null
+  endDate: string | null
+  startTime: string
+  endTime: string
+  gender: Gender
+  tripTypes: TripType[]
+  carRental: boolean
+  geocaching: boolean
+  optionalTrip: boolean
+  luggageType: LuggageType
+  flightNumber: string
+  flightInfo: FlightInfo | null
+  hasPriority: boolean
+  hasPaidBag: boolean
+  countryInfo: CountryInfo | null
+  items: PackItem[] | null
+  transport?: TransportMode
+  transportOther?: string
+  accommodation?: Accommodation
+  accommodationOther?: string
+  view?: 'form' | 'list'
+}
+
+function loadPersistedState(): PersistedState | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as PersistedState) : null
+  } catch {
+    return null
+  }
+}
 
 function useTripTypes(
   t: ReturnType<typeof useLang>['t'],
@@ -46,6 +91,8 @@ export function TripPlanner() {
     { value: 'neuvedene', label: t.genderUnspecified },
   ]
 
+  // ── Initialise from localStorage ────────────────────────────
+  const [hydrated, setHydrated] = useState(false)
   const [destination, setDestination] = useState<GeoResult | null>(null)
   const [startDate, setStartDate] = useState<string | null>(null)
   const [endDate, setEndDate] = useState<string | null>(null)
@@ -63,11 +110,84 @@ export function TripPlanner() {
   const [hasPriority, setHasPriority] = useState(false)
   const [hasPaidBag, setHasPaidBag] = useState(false)
   const [items, setItems] = useState<PackItem[] | null>(null)
+  const [transport, setTransport] = useState<TransportMode>('lietadlo')
+  const [transportOther, setTransportOther] = useState('')
+  const [accommodation, setAccommodation] = useState<Accommodation>('hotel')
+  const [accommodationOther, setAccommodationOther] = useState('')
+  const [view, setView] = useState<'form' | 'list'>('form')
   const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [aiResult, setAiResult] = useState<AiPacklistResult | null>(null)
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null)
   const [countryInfoLoading, setCountryInfoLoading] = useState(false)
 
+  // Hydrate from localStorage on first client render
+  useEffect(() => {
+    const saved = loadPersistedState()
+    if (saved) {
+      if (saved.destination) setDestination(saved.destination)
+      if (saved.startDate) setStartDate(saved.startDate)
+      if (saved.endDate) setEndDate(saved.endDate)
+      if (saved.startTime) setStartTime(saved.startTime)
+      if (saved.endTime) setEndTime(saved.endTime)
+      if (saved.gender) setGender(saved.gender)
+      if (saved.tripTypes?.length) setTripTypes(saved.tripTypes)
+      setCarRental(saved.carRental ?? false)
+      setGeocaching(saved.geocaching ?? false)
+      setOptionalTrip(saved.optionalTrip ?? false)
+      if (saved.luggageType) setLuggageType(saved.luggageType)
+      if (saved.flightNumber) setFlightNumber(saved.flightNumber)
+      if (saved.flightInfo) setFlightInfo(saved.flightInfo)
+      setHasPriority(saved.hasPriority ?? false)
+      setHasPaidBag(saved.hasPaidBag ?? false)
+      if (saved.countryInfo) setCountryInfo(saved.countryInfo)
+      if (saved.items) setItems(saved.items)
+      if (saved.transport) setTransport(saved.transport)
+      if (saved.transportOther) setTransportOther(saved.transportOther)
+      if (saved.accommodation) setAccommodation(saved.accommodation)
+      if (saved.accommodationOther) setAccommodationOther(saved.accommodationOther)
+      // Restore view — if a list exists, go straight back to it
+      if (saved.items && saved.view !== 'form') setView('list')
+    }
+    setHydrated(true)
+  }, [])
+
+  // Persist to localStorage whenever relevant state changes
+  const persist = useCallback(() => {
+    if (!hydrated) return
+    const state: PersistedState = {
+      destination,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      gender,
+      tripTypes,
+      carRental,
+      geocaching,
+      optionalTrip,
+      luggageType,
+      flightNumber,
+      flightInfo,
+      hasPriority,
+      hasPaidBag,
+      countryInfo,
+      items,
+      transport,
+      transportOther,
+      accommodation,
+      accommodationOther,
+      view,
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    } catch { /* quota exceeded — ignore */ }
+  }, [hydrated, destination, startDate, endDate, startTime, endTime, gender, tripTypes, carRental, geocaching, optionalTrip, luggageType, flightNumber, flightInfo, hasPriority, hasPaidBag, countryInfo, items, transport, transportOther, accommodation, accommodationOther, view])
+
+  useEffect(() => {
+    persist()
+  }, [persist])
+
+  // ── Weather ──────────────────────────────────────────────────
   const {
     data: weather,
     isLoading: weatherLoading,
@@ -80,13 +200,13 @@ export function TripPlanner() {
     { revalidateOnFocus: false },
   )
 
+  // ── AI Lookup ────────────────────────────────────────────────
   function triggerAiLookup(dest: GeoResult | null, fNumber?: string, fInfo?: FlightInfo | null, prio?: boolean, paidBag?: boolean) {
     if (!dest) {
       setCountryInfo(null)
       return
     }
     setCountryInfoLoading(true)
-    // Determine IATA from flightInfo or parse from flight number
     const iata = fInfo?.iata ?? (fNumber ? fNumber.replace(/\d+.*/, '').trim().toUpperCase() : undefined)
     fetch('/api/ai-lookup', {
       method: 'POST',
@@ -105,7 +225,6 @@ export function TripPlanner() {
     })
       .then((r) => r.json() as Promise<AiLookupResult>)
       .then((result) => {
-        // Map AiLookupResult to CountryInfo
         const ci: CountryInfo = {
           currency: result.currency,
           currencySymbol: result.currencySymbol,
@@ -149,15 +268,16 @@ export function TripPlanner() {
     triggerAiLookup(dest, flightNumber, flightInfo)
   }
 
-  function toggleTripType(t: TripType) {
+  function toggleTripType(type: TripType) {
     setTripTypesTouched(true)
     setTripTypes((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+      prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type],
     )
   }
 
   const canGenerate = destination && startDate && endDate && !weatherLoading
 
+  // ── Generate packlist ────────────────────────────────────────
   function generate() {
     if (!destination || !startDate || !endDate) return
 
@@ -179,15 +299,18 @@ export function TripPlanner() {
       hasPriority,
       hasPaidBag,
       countryInfo: countryInfo ?? null,
+      transport,
+      transportOther: transportOther || undefined,
+      accommodation,
+      accommodationOther: accommodationOther || undefined,
     }
 
-    // 1. Generate base list immediately
     const baseList = generatePackingList(cfg)
     setItems(baseList)
+    setView('list')
     setAiResult(null)
     setAiStatus('loading')
 
-    // 2. Fire AI personalisation in the background
     fetch('/api/ai-packlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -200,24 +323,14 @@ export function TripPlanner() {
       .then((result) => {
         setAiResult(result)
         setAiStatus('done')
-
-        // Merge AI additions and apply removals + highlights
         setItems((prev) => {
           if (!prev) return prev
-
-          // Apply removals
           const removed = new Set(result.removals.map((n) => n.toLowerCase()))
           let merged = prev.filter((i) => !removed.has(i.name.toLowerCase()))
-
-          // Apply highlights (add a marker via note prefix)
           const highlighted = new Set(result.highlights.map((n) => n.toLowerCase()))
           merged = merged.map((i) =>
-            highlighted.has(i.name.toLowerCase())
-              ? { ...i, highlight: true }
-              : i,
+            highlighted.has(i.name.toLowerCase()) ? { ...i, highlight: true } : i,
           )
-
-          // Add AI additions
           const additions: PackItem[] = result.additions.map((a, idx) => ({
             id: `ai${idx}`,
             category: a.category,
@@ -228,7 +341,6 @@ export function TripPlanner() {
             aiAdded: true,
             highlight: highlighted.has(a.name.toLowerCase()),
           }))
-
           return [...merged, ...additions]
         })
       })
@@ -237,10 +349,13 @@ export function TripPlanner() {
       })
   }
 
-  function reset() {
-    setItems(null)
-    setAiStatus('idle')
-    setAiResult(null)
+  // "Upraviť cestu" — switch to form WITHOUT losing the checked list
+  function editTrip() {
+    setView('form')
+  }
+
+  function backToList() {
+    setView('list')
   }
 
   const tripDays =
@@ -258,17 +373,18 @@ export function TripPlanner() {
     return t.days5
   }
 
-  // ── Packlist view ──────────────────────────────────────────
-  if (items) {
+  // ── Packlist view ────────────────────────────────────────────
+  if (items && view === 'list') {
     return (
       <div className="flex flex-col gap-4">
-        <div className="print:hidden flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-bold text-balance">
+        {/* Header — stacks on mobile, row on sm+ */}
+        <div className="print:hidden flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-balance sm:text-xl">
               {destination?.name}
               {destination?.country ? `, ${destination.country}` : ''}
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {startDate && endDate
                 ? `${new Date(startDate + 'T00:00:00').toLocaleDateString(lang === 'en' ? 'en-GB' : 'sk-SK')} – ${new Date(endDate + 'T00:00:00').toLocaleDateString(lang === 'en' ? 'en-GB' : 'sk-SK')}`
                 : ''}
@@ -277,11 +393,11 @@ export function TripPlanner() {
               {` · ${tripDays} ${dayLabel(tripDays)}`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <LangToggle lang={lang} setLang={setLang} />
             <button
               type="button"
-              onClick={reset}
+              onClick={editTrip}
               className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
             >
               <RotateCcw className="size-4" aria-hidden="true" />
@@ -308,9 +424,7 @@ export function TripPlanner() {
           onToggle={(id) =>
             setItems(
               (prev) =>
-                prev?.map((i) =>
-                  i.id === id ? { ...i, checked: !i.checked } : i,
-                ) ?? null,
+                prev?.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) ?? null,
             )
           }
           onDelete={(id) =>
@@ -319,23 +433,13 @@ export function TripPlanner() {
           onAdd={(category, name) =>
             setItems((prev) =>
               prev
-                ? [
-                    ...prev,
-                    {
-                      id: `c${Date.now()}`,
-                      category,
-                      name,
-                      checked: false,
-                      custom: true,
-                    },
-                  ]
+                ? [...prev, { id: `c${Date.now()}`, category, name, checked: false, custom: true }]
                 : null,
             )
           }
           onQtyChange={(id, qty) =>
             setItems(
-              (prev) =>
-                prev?.map((i) => (i.id === id ? { ...i, qty } : i)) ?? null,
+              (prev) => prev?.map((i) => (i.id === id ? { ...i, qty } : i)) ?? null,
             )
           }
         />
@@ -343,11 +447,22 @@ export function TripPlanner() {
     )
   }
 
-  // ── Form view ──────────────────────────────────────────────
+  // ── Form view ────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-5">
-      {/* Language toggle in form */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        {items ? (
+          <button
+            type="button"
+            onClick={backToList}
+            className="flex items-center gap-1.5 rounded-lg border border-primary bg-primary/5 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            <ListChecks className="size-4" aria-hidden="true" />
+            {t.backToList}
+          </button>
+        ) : (
+          <span />
+        )}
         <LangToggle lang={lang} setLang={setLang} />
       </div>
 
@@ -355,6 +470,46 @@ export function TripPlanner() {
         selected={destination}
         onSelect={handleDestinationSelect}
       />
+
+      {/* Transport mode — fundamental choice, affects the whole list */}
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-semibold">{t.transport}</legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { value: 'lietadlo', label: t.transportPlane, icon: Plane },
+              { value: 'auto', label: t.transportCar, icon: Car },
+              { value: 'vlak', label: t.transportTrain, icon: TrainFront },
+              { value: 'autobus', label: t.transportBus, icon: Bus },
+              { value: 'ine', label: t.transportOther, icon: MoreHorizontal },
+            ] as { value: TransportMode; label: string; icon: typeof Plane }[]
+          ).map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={transport === value}
+              onClick={() => setTransport(value)}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                transport === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card hover:bg-muted'
+              }`}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+        {transport === 'ine' && (
+          <input
+            type="text"
+            value={transportOther}
+            onChange={(e) => setTransportOther(e.target.value)}
+            placeholder={t.transportOtherPlaceholder}
+            className="mt-2 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+        )}
+      </fieldset>
 
       <DateRangePicker
         startDate={startDate}
@@ -380,9 +535,7 @@ export function TripPlanner() {
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold">
           {t.tripType}{' '}
-          <span className="font-normal text-muted-foreground">
-            {t.tripTypeHint}
-          </span>
+          <span className="font-normal text-muted-foreground">{t.tripTypeHint}</span>
         </legend>
         <div className="flex flex-wrap gap-2">
           {TRIP_TYPES.map(({ value, label, icon: Icon }) => {
@@ -428,50 +581,72 @@ export function TripPlanner() {
         </div>
       </fieldset>
 
-      <LuggagePicker
-        luggageType={luggageType}
-        flightNumber={flightNumber}
-        flightInfo={flightInfo}
-        hasPriority={hasPriority}
-        hasPaidBag={hasPaidBag}
-        onChange={(v) => {
-          setLuggageType(v.luggageType)
-          setFlightNumber(v.flightNumber)
-          setFlightInfo(v.flightInfo)
-          setHasPriority(v.hasPriority)
-          setHasPaidBag(v.hasPaidBag)
-          // Re-run AI lookup if flight info changed (new airline = new baggage rules)
-          if (v.flightInfo?.iata !== flightInfo?.iata || v.flightNumber !== flightNumber) {
-            triggerAiLookup(destination, v.flightNumber, v.flightInfo, v.hasPriority, v.hasPaidBag)
-          }
-        }}
-      />
+      {/* Accommodation type */}
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-semibold">{t.accommodation}</legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { value: 'hotel', label: t.accomHotel, icon: Hotel },
+              { value: 'privat', label: t.accomPrivat, icon: Home },
+              { value: 'kemp', label: t.accomKemp, icon: Tent },
+              { value: 'ine', label: t.accomOther, icon: MoreHorizontal },
+            ] as { value: Accommodation; label: string; icon: typeof Hotel }[]
+          ).map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={accommodation === value}
+              onClick={() => setAccommodation(value)}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                accommodation === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card hover:bg-muted'
+              }`}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+        {accommodation === 'ine' && (
+          <input
+            type="text"
+            value={accommodationOther}
+            onChange={(e) => setAccommodationOther(e.target.value)}
+            placeholder={t.accomOtherPlaceholder}
+            className="mt-2 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+        )}
+      </fieldset>
 
-      {/* Extras */}
+      {/* Luggage & flight — only relevant when flying */}
+      {transport === 'lietadlo' && (
+        <LuggagePicker
+          luggageType={luggageType}
+          flightNumber={flightNumber}
+          flightInfo={flightInfo}
+          hasPriority={hasPriority}
+          hasPaidBag={hasPaidBag}
+          onChange={(v) => {
+            setLuggageType(v.luggageType)
+            setFlightNumber(v.flightNumber)
+            setFlightInfo(v.flightInfo)
+            setHasPriority(v.hasPriority)
+            setHasPaidBag(v.hasPaidBag)
+            if (v.flightInfo?.iata !== flightInfo?.iata || v.flightNumber !== flightNumber) {
+              triggerAiLookup(destination, v.flightNumber, v.flightInfo, v.hasPriority, v.hasPaidBag)
+            }
+          }}
+        />
+      )}
+
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold">{t.extras}</legend>
         <div className="flex flex-col gap-2">
-          <ExtraToggle
-            icon={Car}
-            label={t.carRental}
-            note={t.carRentalNote}
-            checked={carRental}
-            onChange={setCarRental}
-          />
-          <ExtraToggle
-            icon={Compass}
-            label={t.geocaching}
-            note={t.geocachingNote}
-            checked={geocaching}
-            onChange={setGeocaching}
-          />
-          <ExtraToggle
-            icon={Map}
-            label={t.optionalTrip}
-            note={t.optionalTripNote}
-            checked={optionalTrip}
-            onChange={setOptionalTrip}
-          />
+          <ExtraToggle icon={Car} label={t.carRental} note={t.carRentalNote} checked={carRental} onChange={setCarRental} />
+          <ExtraToggle icon={Compass} label={t.geocaching} note={t.geocachingNote} checked={geocaching} onChange={setGeocaching} />
+          <ExtraToggle icon={Map} label={t.optionalTrip} note={t.optionalTripNote} checked={optionalTrip} onChange={setOptionalTrip} />
         </div>
       </fieldset>
 
@@ -489,24 +664,31 @@ export function TripPlanner() {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={generate}
-        disabled={!canGenerate}
-        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40"
-      >
-        {weatherLoading ? (
-          <>
-            <Luggage className="size-5" aria-hidden="true" />
-            {t.generating}
-          </>
-        ) : (
-          <>
-            <Sparkles className="size-5" aria-hidden="true" />
-            {t.generate}
-          </>
+      <div className="flex flex-col gap-2">
+        {items && (
+          <p className="text-center text-xs text-muted-foreground text-pretty">
+            {t.regenerateWarn}
+          </p>
         )}
-      </button>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={!canGenerate}
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-40 active:opacity-80"
+        >
+          {weatherLoading ? (
+            <>
+              <Luggage className="size-5" aria-hidden="true" />
+              {t.generating}
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-5" aria-hidden="true" />
+              {t.generate}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
@@ -532,7 +714,7 @@ function ExtraToggle({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 accent-[#0e7c86]"
+        className="mt-0.5 size-5 shrink-0 accent-[#0e7c86]"
       />
       <span className="flex items-start gap-2">
         <Icon className={`mt-0.5 size-4 shrink-0 ${checked ? 'text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />

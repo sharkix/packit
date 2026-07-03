@@ -12,6 +12,8 @@ export interface GeoResult {
 export type TripType = 'more' | 'hory' | 'mesto'
 export type Gender = 'muz' | 'zena' | 'neuvedene'
 export type LuggageType = 'ruksak' | 'ruksak+kabinka' | 'kufor-maly' | 'kufor-velky'
+export type TransportMode = 'lietadlo' | 'auto' | 'vlak' | 'autobus' | 'ine'
+export type Accommodation = 'hotel' | 'privat' | 'kemp' | 'ine'
 
 export interface FlightInfo {
   flightNumber: string          // e.g. "FR1234"
@@ -65,6 +67,10 @@ export interface TripConfig {
   hasPriority: boolean
   hasPaidBag: boolean
   countryInfo?: CountryInfo | null
+  transport: TransportMode
+  transportOther?: string     // manual description when transport === 'ine'
+  accommodation: Accommodation
+  accommodationOther?: string // manual description when accommodation === 'ine'
 }
 
 export interface PlugAdapter {
