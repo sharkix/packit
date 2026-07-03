@@ -55,7 +55,14 @@ interface LookupRequest {
   hasPriority?: boolean
   hasPaidBag?: boolean
   luggageType?: string
+  luggagePieces?: string[]  // e.g. ['osobna', 'kabinova', 'odbavena']
   lang?: 'sk' | 'en'
+}
+
+const PIECE_LABELS: Record<string, string> = {
+  osobna: 'osobná batožina (malý ruksak)',
+  kabinova: 'kabínová batožina (kufrík)',
+  odbavena: 'odbavený kufor',
 }
 
 function buildPrompt(req: LookupRequest): string {
@@ -69,7 +76,7 @@ function buildPrompt(req: LookupRequest): string {
   return `Si cestovný expert. Pre slovenského cestovateľa letiacého do "${dest}" (kód krajiny: ${req.countryCode ?? '?'}) zisti nasledovné informácie.
 
 LET: ${flightLine}
-BATOŽINA: ${req.luggageType ?? 'neuvedená'}
+BATOŽINA: ${req.luggagePieces?.length ? req.luggagePieces.map((p) => PIECE_LABELS[p] ?? p).join(' + ') : req.luggageType ?? 'neuvedená'}
 
 Odpovedz presne a stručne. Všetky texty píš po SLOVENSKY (okrem názvov, kódov, rozmerov).
 

@@ -2,18 +2,18 @@
 
 import { useState } from 'react'
 import { Backpack, Briefcase, Luggage, Search, CheckCircle2, AlertCircle, Loader2, ChevronDown } from 'lucide-react'
-import type { LuggageType, FlightInfo } from '@/lib/types'
+import type { LuggagePiece, FlightInfo } from '@/lib/types'
 import { lookupFlightBaggage, POPULAR_AIRLINES } from '@/lib/flight'
 import { useLang } from '@/lib/i18n'
 
 interface LuggagePickerProps {
-  luggageType: LuggageType
+  luggagePieces: LuggagePiece[]
   flightNumber: string
   flightInfo: FlightInfo | null
   hasPriority: boolean
   hasPaidBag: boolean
   onChange: (v: {
-    luggageType: LuggageType
+    luggagePieces: LuggagePiece[]
     flightNumber: string
     flightInfo: FlightInfo | null
     hasPriority: boolean
@@ -21,43 +21,35 @@ interface LuggagePickerProps {
   }) => void
 }
 
-const LUGGAGE_OPTIONS: { value: LuggageType; icon: typeof Backpack; skLabel: string; enLabel: string; skDesc: string; enDesc: string }[] = [
+const LUGGAGE_OPTIONS: { value: LuggagePiece; icon: typeof Backpack; skLabel: string; enLabel: string; skDesc: string; enDesc: string }[] = [
   {
-    value: 'ruksak',
+    value: 'osobna',
     icon: Backpack,
-    skLabel: 'Len ruksak',
-    enLabel: 'Backpack only',
-    skDesc: 'Ako osobná batožina do kabíny',
-    enDesc: 'Personal item in the cabin',
+    skLabel: 'Ruksak / osobná batožina',
+    enLabel: 'Backpack / personal item',
+    skDesc: 'Pod sedadlo pred tebou',
+    enDesc: 'Under the seat in front',
   },
   {
-    value: 'ruksak+kabinka',
+    value: 'kabinova',
     icon: Briefcase,
-    skLabel: 'Batoh + kabínkový kufrík',
-    enLabel: 'Backpack + cabin bag',
-    skDesc: 'Malý batoh pod sedadlo + kabínkový kufrík',
-    enDesc: 'Small bag under seat + cabin-size carry-on',
+    skLabel: 'Kabínová batožina',
+    enLabel: 'Cabin bag',
+    skDesc: 'Kufrík do priestoru nad hlavou',
+    enDesc: 'Carry-on in the overhead bin',
   },
   {
-    value: 'kufor-maly',
+    value: 'odbavena',
     icon: Luggage,
-    skLabel: 'Malý kufrík (kabína)',
-    enLabel: 'Small suitcase (cabin)',
-    skDesc: 'Kabínový kufrík do priestoru nad hlavou',
-    enDesc: 'Carry-on suitcase in the overhead bin',
-  },
-  {
-    value: 'kufor-velky',
-    icon: Luggage,
-    skLabel: 'Veľký kufrík (odbavený)',
-    enLabel: 'Large suitcase (checked)',
-    skDesc: 'Odbavená batožina do podpalubí',
-    enDesc: 'Checked baggage in the hold',
+    skLabel: 'Odbavený kufor',
+    enLabel: 'Checked bag',
+    skDesc: 'Veľký kufor do podpalubia',
+    enDesc: 'Large suitcase in the hold',
   },
 ]
 
 export function LuggagePicker({
-  luggageType,
+  luggagePieces,
   flightNumber,
   flightInfo,
   hasPriority,
@@ -69,11 +61,11 @@ export function LuggagePicker({
   const [loading, setLoading] = useState(false)
   const [showAirlines, setShowAirlines] = useState(false)
   const [notFound, setNotFound] = useState(false)
-  const needsCheckedBag = luggageType === 'kufor-velky'
+  const needsCheckedBag = luggagePieces.includes('odbavena')
 
   function emit(partial: Partial<Parameters<typeof onChange>[0]>) {
     onChange({
-      luggageType,
+      luggagePieces,
       flightNumber,
       flightInfo,
       hasPriority,
@@ -82,8 +74,13 @@ export function LuggagePicker({
     })
   }
 
-  function handleLuggage(v: LuggageType) {
-    emit({ luggageType: v })
+  function togglePiece(v: LuggagePiece) {
+    const next = luggagePieces.includes(v)
+      ? luggagePieces.filter((p) => p !== v)
+      : [...luggagePieces, v]
+    // At least one piece must stay selected
+    if (next.length === 0) return
+    emit({ luggagePieces: next })
   }
 
   async function handleFlightLookup() {
@@ -157,14 +154,14 @@ export function LuggagePicker({
   }
 
   function handlePriority(v: boolean) {
-    // Re-run lookup with updated priority flag so bag sizes update
-    const info = flightNumber ? lookupFlightBaggage(flightNumber, v, hasPaidBag) : null
-    emit({ hasPriority: v, flightInfo: info })
+    // Re-run local lookup so bag sizes update — but NEVER wipe AI-resolved info
+    const local = flightNumber ? lookupFlightBaggage(flightNumber, v, hasPaidBag) : null
+    emit({ hasPriority: v, flightInfo: local ?? flightInfo })
   }
 
   function handlePaidBag(v: boolean) {
-    const info = flightNumber ? lookupFlightBaggage(flightNumber, hasPriority, v) : null
-    emit({ hasPaidBag: v, flightInfo: info })
+    const local = flightNumber ? lookupFlightBaggage(flightNumber, hasPriority, v) : null
+    emit({ hasPaidBag: v, flightInfo: local ?? flightInfo })
   }
 
   async function pickAirline(iata: string) {
@@ -211,32 +208,36 @@ export function LuggagePicker({
     setNotFound(true)
   }
 
-  const isLargeIcon = (v: LuggageType) => v === 'kufor-velky'
-
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="mb-0.5 text-sm font-semibold">
-        {lang === 'sk' ? 'Batožina' : 'Luggage'}
+        {lang === 'sk' ? 'Batožina' : 'Luggage'}{' '}
+        <span className="font-normal text-muted-foreground">
+          {lang === 'sk' ? '(vyber všetko, čo berieš)' : '(select everything you take)'}
+        </span>
       </legend>
 
-      {/* Luggage type selector */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Luggage pieces — multi-select, combine freely */}
+      <div className="grid grid-cols-3 gap-2">
         {LUGGAGE_OPTIONS.map(({ value, icon: Icon, skLabel, enLabel, skDesc, enDesc }) => {
-          const active = luggageType === value
+          const active = luggagePieces.includes(value)
           return (
             <button
               key={value}
               type="button"
               aria-pressed={active}
-              onClick={() => handleLuggage(value)}
-              className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center text-xs transition-colors ${
+              onClick={() => togglePiece(value)}
+              className={`relative flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center text-xs transition-colors ${
                 active
                   ? 'border-primary bg-primary/8 font-semibold text-primary'
                   : 'border-border bg-card text-foreground hover:bg-muted'
               }`}
             >
+              {active && (
+                <CheckCircle2 className="absolute right-1.5 top-1.5 size-4 text-primary" aria-hidden="true" />
+              )}
               <Icon
-                className={`${isLargeIcon(value) ? 'size-6' : 'size-5'} ${active ? 'text-primary' : 'text-muted-foreground'}`}
+                className={`size-5 ${active ? 'text-primary' : 'text-muted-foreground'}`}
                 aria-hidden="true"
               />
               <span className="leading-tight">{lang === 'sk' ? skLabel : enLabel}</span>
@@ -378,7 +379,7 @@ export function LuggagePicker({
           </span>
         </label>
 
-        {(luggageType === 'kufor-velky' || luggageType === 'ruksak+kabinka') && (
+        {(luggagePieces.includes('odbavena') || luggagePieces.includes('kabinova')) && (
           <label className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
             hasPaidBag ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted'
           }`}>

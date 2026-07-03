@@ -12,6 +12,8 @@ export interface GeoResult {
 export type TripType = 'more' | 'hory' | 'mesto'
 export type Gender = 'muz' | 'zena' | 'neuvedene'
 export type LuggageType = 'ruksak' | 'ruksak+kabinka' | 'kufor-maly' | 'kufor-velky'
+// Multi-select luggage pieces — any combination is allowed
+export type LuggagePiece = 'osobna' | 'kabinova' | 'odbavena'
 export type TransportMode = 'lietadlo' | 'auto' | 'vlak' | 'autobus' | 'ine'
 export type Accommodation = 'hotel' | 'privat' | 'kemp' | 'ine'
 
@@ -61,7 +63,8 @@ export interface TripConfig {
   carRental: boolean
   geocaching: boolean
   optionalTrip: boolean
-  luggageType: LuggageType
+  luggageType: LuggageType      // legacy single-select (kept for migration)
+  luggagePieces?: LuggagePiece[] // preferred: any combination of pieces
   flightNumber?: string
   flightInfo?: FlightInfo | null
   hasPriority: boolean

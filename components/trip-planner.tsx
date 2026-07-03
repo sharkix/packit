@@ -29,8 +29,8 @@ import { LuggagePicker } from './luggage-picker'
 import { AiStatus } from './ai-status'
 import { CountryInfoCard } from './country-info-card'
 import { fetchWeather } from '@/lib/weather'
-import { generatePackingList } from '@/lib/packing'
-import type { GeoResult, Gender, PackItem, TripType, LuggageType, FlightInfo, CountryInfo, TransportMode, Accommodation } from '@/lib/types'
+import { generatePackingList, legacyLuggageToPieces } from '@/lib/packing'
+import type { GeoResult, Gender, PackItem, TripType, LuggageType, LuggagePiece, FlightInfo, CountryInfo, TransportMode, Accommodation } from '@/lib/types'
 import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import type { AiLookupResult } from '@/app/api/ai-lookup/route'
 import { useLang } from '@/lib/i18n'
@@ -48,7 +48,8 @@ interface PersistedState {
   carRental: boolean
   geocaching: boolean
   optionalTrip: boolean
-  luggageType: LuggageType
+  luggageType: LuggageType        // legacy — kept so old saves still load
+  luggagePieces?: LuggagePiece[]  // preferred multi-select model
   flightNumber: string
   flightInfo: FlightInfo | null
   hasPriority: boolean
@@ -104,7 +105,7 @@ export function TripPlanner() {
   const [carRental, setCarRental] = useState(false)
   const [geocaching, setGeocaching] = useState(false)
   const [optionalTrip, setOptionalTrip] = useState(false)
-  const [luggageType, setLuggageType] = useState<LuggageType>('kufor-maly')
+  const [luggagePieces, setLuggagePieces] = useState<LuggagePiece[]>(['kabinova'])
   const [flightNumber, setFlightNumber] = useState('')
   const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null)
   const [hasPriority, setHasPriority] = useState(false)
@@ -134,7 +135,12 @@ export function TripPlanner() {
       setCarRental(saved.carRental ?? false)
       setGeocaching(saved.geocaching ?? false)
       setOptionalTrip(saved.optionalTrip ?? false)
-      if (saved.luggageType) setLuggageType(saved.luggageType)
+      if (saved.luggagePieces?.length) {
+        setLuggagePieces(saved.luggagePieces)
+      } else if (saved.luggageType) {
+        // Migrate legacy single-select to the new multi-piece model
+        setLuggagePieces(legacyLuggageToPieces(saved.luggageType))
+      }
       if (saved.flightNumber) setFlightNumber(saved.flightNumber)
       if (saved.flightInfo) setFlightInfo(saved.flightInfo)
       setHasPriority(saved.hasPriority ?? false)
@@ -165,7 +171,8 @@ export function TripPlanner() {
       carRental,
       geocaching,
       optionalTrip,
-      luggageType,
+      luggageType: 'kufor-maly', // legacy field, superseded by luggagePieces
+      luggagePieces,
       flightNumber,
       flightInfo,
       hasPriority,
@@ -181,7 +188,7 @@ export function TripPlanner() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch { /* quota exceeded — ignore */ }
-  }, [hydrated, destination, startDate, endDate, startTime, endTime, gender, tripTypes, carRental, geocaching, optionalTrip, luggageType, flightNumber, flightInfo, hasPriority, hasPaidBag, countryInfo, items, transport, transportOther, accommodation, accommodationOther, view])
+  }, [hydrated, destination, startDate, endDate, startTime, endTime, gender, tripTypes, carRental, geocaching, optionalTrip, luggagePieces, flightNumber, flightInfo, hasPriority, hasPaidBag, countryInfo, items, transport, transportOther, accommodation, accommodationOther, view])
 
   useEffect(() => {
     persist()
@@ -219,7 +226,7 @@ export function TripPlanner() {
         flightNumber: fNumber || undefined,
         hasPriority: prio ?? hasPriority,
         hasPaidBag: paidBag ?? hasPaidBag,
-        luggageType,
+        luggagePieces,
         lang,
       }),
     })
@@ -293,7 +300,8 @@ export function TripPlanner() {
       carRental,
       geocaching,
       optionalTrip,
-      luggageType,
+      luggageType: 'kufor-maly' as LuggageType, // legacy, superseded by luggagePieces
+      luggagePieces,
       flightNumber: flightNumber || undefined,
       flightInfo: flightInfo ?? undefined,
       hasPriority,
@@ -623,13 +631,13 @@ export function TripPlanner() {
       {/* Luggage & flight — only relevant when flying */}
       {transport === 'lietadlo' && (
         <LuggagePicker
-          luggageType={luggageType}
+          luggagePieces={luggagePieces}
           flightNumber={flightNumber}
           flightInfo={flightInfo}
           hasPriority={hasPriority}
           hasPaidBag={hasPaidBag}
           onChange={(v) => {
-            setLuggageType(v.luggageType)
+            setLuggagePieces(v.luggagePieces)
             setFlightNumber(v.flightNumber)
             setFlightInfo(v.flightInfo)
             setHasPriority(v.hasPriority)
