@@ -73,14 +73,31 @@ function buildPrompt(cfg: TripConfig): string {
     cfg.optionalTrip && 'fakultatívny výlet',
   ].filter(Boolean).join(', ') || 'žiadne'
 
-  const flightText = cfg.flightInfo
-    ? `Let: ${cfg.flightInfo.airline} (${cfg.flightInfo.iata}), kabína: ${cfg.flightInfo.cabinBagSize}` +
-      (cfg.flightInfo.cabinBagWeight ? `, max ${cfg.flightInfo.cabinBagWeight} kg` : '') +
-      (cfg.hasPriority ? ', má priority boarding' : '') +
-      (cfg.hasPaidBag ? ', zaplatená väčšia batožina' : '')
-    : cfg.flightNumber
-      ? `Číslo letu: ${cfg.flightNumber}`
-      : 'Doprava: letecky (bez špecifík letu)'
+  const transportText = {
+    lietadlo: 'letecky',
+    auto: 'vlastným autom (žiadne váhové limity batožiny, ale povinná výbava auta, diaľničné známky, zelená karta)',
+    vlak: 'vlakom (batožinu treba prenášať, cennosti pri sebe)',
+    autobus: 'autobusom (batožinu treba prenášať, cennosti pri sebe)',
+    ine: `iným spôsobom: ${cfg.transportOther || 'neupresnené'}`,
+  }[cfg.transport ?? 'lietadlo']
+
+  const accommodationText = {
+    hotel: 'hotel/penzión (uteráky, sušič vlasov a základná hygiena sú k dispozícii)',
+    privat: 'apartmán/privát (NIE SÚ uteráky, hygiena ani potraviny — treba si doniesť!)',
+    kemp: 'kemping (treba kompletné vybavenie: stan, spacák, varič...)',
+    ine: `iné: ${cfg.accommodationOther || 'neupresnené'}`,
+  }[cfg.accommodation ?? 'hotel']
+
+  const flightText = cfg.transport !== 'lietadlo'
+    ? `Doprava: ${transportText}`
+    : cfg.flightInfo
+      ? `Doprava: letecky — ${cfg.flightInfo.airline} (${cfg.flightInfo.iata}), kabína: ${cfg.flightInfo.cabinBagSize}` +
+        (cfg.flightInfo.cabinBagWeight ? `, max ${cfg.flightInfo.cabinBagWeight} kg` : '') +
+        (cfg.hasPriority ? ', má priority boarding' : '') +
+        (cfg.hasPaidBag ? ', zaplatená väčšia batožina' : '')
+      : cfg.flightNumber
+        ? `Doprava: letecky — číslo letu: ${cfg.flightNumber}`
+        : 'Doprava: letecky (bez špecifík letu)'
 
   // Country info context
   const ci = cfg.countryInfo
@@ -108,8 +125,9 @@ INFORMÁCIE O CESTE:
 - Cestovateľ: ${genderText}
 - Typ cesty: ${tripTypeText}
 - ${weatherDesc}
-- Batožina: ${luggageText}
 - ${flightText}
+${cfg.transport === 'lietadlo' ? `- Batožina: ${luggageText}` : ''}
+- Ubytovanie: ${accommodationText}
 - Extras: ${extrasText}
 
 KRAJINOVÉ INFORMÁCIE (zistené AI):
@@ -123,7 +141,9 @@ POKYNY:
    - Lokálne kultúrne požiadavky: dress code, špeciálne povolenia, zálohy
    - Špecifiká destinácie, terén, sezóna, aktivity
    - Ak ruksak: maximálna efektívnosť, odľahčenie
-2. V "removals" označ položky zbytočné pre túto konkrétnu cestu.
+   - DOPRAVA: ak ide autom — povinná výbava, prestávky, občerstvenie; ak vlakom/autobusom — zabezpečenie batožiny; NIKDY nespomínaj letecké limity ak sa neletí
+   - UBYTOVANIE: privát/apartmán = doniesť uteráky, hygienu, základné potraviny; kemp = kompletné vybavenie; hotel = netreba uteráky ani sušič
+2. V "removals" označ položky zbytočné pre túto konkrétnu cestu (napr. letecké položky ak sa neletí, uteráky ak je hotel).
 3. V "highlights" vyber 3-6 KĽÚČOVÝCH položiek (pas, redukcia ak treba, lieky, SPF, atď.).
 4. Buď konkrétny a relevantný — kvalita nad kvantitou.
 5. Všetky texty píš po SLOVENSKY.`

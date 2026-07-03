@@ -84,45 +84,92 @@ export function generatePackingList(cfg: TripConfig): PackItem[] {
   }
 
   // ── Batožina ───────────────────────────────────────────────
-  const luggage: LuggageType = cfg.luggageType ?? 'kufor-maly'
-  const fi = cfg.flightInfo ?? null
+  const flying = cfg.transport === 'lietadlo'
+  const byCar = cfg.transport === 'auto'
+  const byTrainBus = cfg.transport === 'vlak' || cfg.transport === 'autobus'
 
-  if (luggage === 'ruksak') {
-    add('batazina', 'Cestovný ruksak', undefined, 'uisti sa, že spĺňa rozmery leteckej spoločnosti')
-    add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
-    add('batazina', 'Zámok na ruksak')
-  } else if (luggage === 'ruksak+kabinka') {
-    add('batazina', 'Malý batoh (osobná batožina)', undefined, fi ? fi.cabinBagSize : 'do 40×20×25 cm')
-    add('batazina', 'Kabínkový kufrík', undefined, fi ? fi.cabinBagSize : 'skontroluj rozmery')
-    add('batazina', 'Kombináciový zámok na kufrík')
-  } else if (luggage === 'kufor-maly') {
-    add('batazina', 'Malý kufrík (kabínový)', undefined, fi ? fi.cabinBagSize : 'do 55×40×20 cm, skontroluj rozmery')
-    add('batazina', 'Kombináciový zámok TSA')
-    if (fi?.cabinBagWeight) add('batazina', `Kufrík vážiť max. ${fi.cabinBagWeight} kg`, undefined, 'skontroluj pred odchodom')
+  if (flying) {
+    const luggage: LuggageType = cfg.luggageType ?? 'kufor-maly'
+    const fi = cfg.flightInfo ?? null
+
+    if (luggage === 'ruksak') {
+      add('batazina', 'Cestovný ruksak', undefined, 'uisti sa, že spĺňa rozmery leteckej spoločnosti')
+      add('batazina', 'Organizéry / packing cubes', undefined, 'šetria priestor')
+      add('batazina', 'Zámok na ruksak')
+    } else if (luggage === 'ruksak+kabinka') {
+      add('batazina', 'Malý batoh (osobná batožina)', undefined, fi ? fi.cabinBagSize : 'do 40×20×25 cm')
+      add('batazina', 'Kabínkový kufrík', undefined, fi ? fi.cabinBagSize : 'skontroluj rozmery')
+      add('batazina', 'Kombináciový zámok na kufrík')
+    } else if (luggage === 'kufor-maly') {
+      add('batazina', 'Malý kufrík (kabínový)', undefined, fi ? fi.cabinBagSize : 'do 55×40×20 cm, skontroluj rozmery')
+      add('batazina', 'Kombináciový zámok TSA')
+      if (fi?.cabinBagWeight) add('batazina', `Kufrík vážiť max. ${fi.cabinBagWeight} kg`, undefined, 'skontroluj pred odchodom')
+    } else {
+      add('batazina', 'Veľký kufrík (odbavená batožina)', undefined,
+        fi?.checkedBagWeight
+          ? `max. ${fi.checkedBagWeight} kg — ${fi.airline}`
+          : 'skontroluj limit u leteckej spoločnosti',
+      )
+      add('batazina', 'Batoh / taška ako príručná batožina')
+      add('batazina', 'Kombináciový zámok TSA')
+      add('batazina', 'Menovka na kufrík', undefined, 'meno + telefón')
+      if (fi?.cabinBagWeight) add('batazina', `Príručná batožina max. ${fi.cabinBagWeight} kg`)
+    }
+
+    if (fi) {
+      if (cfg.hasPriority && fi.priorityBoardingNote) {
+        add('batazina', 'Priority boarding doklad', undefined, fi.priorityBoardingNote)
+      }
+      if (cfg.hasPaidBag && luggage !== 'kufor-velky') {
+        add('batazina', 'Potvrdenie o zaplatení extra batožiny', undefined, 'stiahni do telefónu')
+      }
+    }
+
+    add('batazina', 'Balíčky < 100 ml v zip-lock vrecku', undefined, 'tekutiny do kabíny')
+    add('batazina', 'Letenka / palubný lístok', undefined, 'stiahni offline do telefónu')
+  } else if (byCar) {
+    add('batazina', 'Kufor / cestovná taška', undefined, 'bez váhových limitov — ale nezabudni na miesto v aute')
+    add('batazina', 'Chladiaca taška', undefined, 'jedlo a pitie na cestu')
+  } else if (byTrainBus) {
+    add('batazina', 'Kufor alebo batoh', undefined, 'mysli na prenášanie po schodoch a nástupištiach')
+    add('batazina', 'Malý ruksak na cennosti', undefined, 'maj pri sebe, nie v batožinovom priestore')
+    add('batazina', 'Cestovný lístok / miestenka', undefined, 'stiahni offline')
   } else {
-    // kufor-velky
-    add('batazina', 'Veľký kufrík (odbavená batožina)', undefined,
-      fi?.checkedBagWeight
-        ? `max. ${fi.checkedBagWeight} kg — ${fi.airline}`
-        : 'skontroluj limit u leteckej spoločnosti',
-    )
-    add('batazina', 'Batoh / taška ako príručná batožina')
-    add('batazina', 'Kombináciový zámok TSA')
-    add('batazina', 'Menovka na kufrík', undefined, 'meno + telefón')
-    if (fi?.cabinBagWeight) add('batazina', `Príručná batožina max. ${fi.cabinBagWeight} kg`)
+    add('batazina', 'Batožina podľa spôsobu dopravy', undefined, cfg.transportOther || undefined)
   }
-
-  if (fi) {
-    if (cfg.hasPriority && fi.priorityBoardingNote) {
-      add('batazina', 'Priority boarding doklad', undefined, fi.priorityBoardingNote)
-    }
-    if (cfg.hasPaidBag && luggage !== 'kufor-velky') {
-      add('batazina', 'Potvrdenie o zaplatení extra batožiny', undefined, 'stiahni do telefónu')
-    }
-  }
-
-  add('batazina', 'Balíčky < 100 ml v zip-lock vrecku', undefined, 'tekutiny do kabíny')
   add('batazina', 'Krabička na šperky / cennosti')
+
+  // ── Vlastné auto (nie požičané) ────────────────────────────
+  if (byCar) {
+    add('auto', 'Vodičský preukaz + doklady od auta')
+    add('auto', 'Zelená karta (poistenie)', undefined, 'povinná v zahraničí')
+    add('auto', 'Diaľničná známka', undefined, 'skontroluj krajiny na trase')
+    add('auto', 'Reflexná vesta + trojuholník', undefined, 'povinná výbava')
+    add('auto', 'Lekárnička do auta', undefined, 'skontroluj expiráciu')
+    add('auto', 'Nabíjačka do auta')
+    add('auto', 'Offline mapy / GPS')
+    add('auto', 'Voda a občerstvenie na cestu')
+    if (freezing || cold) add('auto', 'Zimná výbava', undefined, 'reťaze, škrabka, zimné kvapaliny')
+  }
+
+  // ── Ubytovanie ─────────────────────────────────────────────
+  const privat = cfg.accommodation === 'privat'
+  const kemp = cfg.accommodation === 'kemp'
+  if (privat) {
+    add('hygiena', 'Uterák / osuška', undefined, 'v privátoch nemusia byť')
+    add('hygiena', 'Sušič vlasov', undefined, 'over či je v apartmáne')
+    add('hygiena', 'Toaletný papier na prvý deň')
+    add('predodchodom', 'Základné potraviny na prvé ráno', undefined, 'káva, čaj, soľ — v apartmáne nič nie je')
+    add('predodchodom', 'Prezuvky / papuče do apartmánu')
+  } else if (kemp) {
+    add('batazina', 'Stan + kolíky', undefined, 'skontroluj kompletnosť')
+    add('batazina', 'Spací vak', undefined, 'podľa nočných teplôt')
+    add('batazina', 'Karimatka / nafukovací matrac')
+    add('hygiena', 'Uterák rýchloschnúci')
+    add('hygiena', 'Toaletné potreby v prenosnej taške')
+    add('batazina', 'Čelovka', undefined, 'nutnosť v kempe')
+    add('batazina', 'Varič + riad', undefined, 'ak si varíš sám')
+  }
 
   // ── Doklady a peniaze ──────────────────────────────────────
   add('doklady', 'Občiansky preukaz / pas')
