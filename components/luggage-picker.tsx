@@ -270,8 +270,8 @@ export function LuggagePicker({
 
         {notFound && !flightInfo && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 flex items-start gap-2">
-            <AlertCircle className="size-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+            <AlertCircle className="size-4 text-amber-700 dark:text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">
               {lang === 'sk'
                 ? 'Leteckú spoločnosť sa nepodarilo rozpoznať. Skontroluj pravidlá batožiny priamo na webe spoločnosti.'
                 : 'Airline not recognised. Please check baggage rules directly on the airline website.'}
