@@ -107,7 +107,7 @@ export function PackingList({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="packing-print-root flex flex-col gap-4">
       {/* Progress bar – sticky, hidden when printing */}
       <div className="print:hidden sticky top-0 z-10 -mx-4 bg-background/95 px-4 py-3 backdrop-blur-sm">
         <div className="mb-1.5 flex items-center justify-between text-sm">
@@ -214,7 +214,7 @@ function CategorySection({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card shadow-sm packing-print-root">
+    <section className="rounded-xl border border-border bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted ${iconColor}`}>

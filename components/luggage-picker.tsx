@@ -95,17 +95,57 @@ export function LuggagePicker({
     }
     setLoading(true)
     setNotFound(false)
-    // Lookup from local DB (no external API needed)
-    await new Promise((r) => setTimeout(r, 300)) // UX delay
-    const info = lookupFlightBaggage(raw, hasPriority, hasPaidBag)
-    setLoading(false)
-    if (info) {
-      emit({ flightNumber: raw, flightInfo: info })
-      setNotFound(false)
-    } else {
-      emit({ flightNumber: raw, flightInfo: null })
-      setNotFound(true)
+
+    // 1. Try static local DB first (instant)
+    const localInfo = lookupFlightBaggage(raw, hasPriority, hasPaidBag)
+    if (localInfo) {
+      setLoading(false)
+      emit({ flightNumber: raw, flightInfo: localInfo })
+      return
     }
+
+    // 2. Fallback: ask AI to identify the airline and its baggage rules
+    try {
+      const res = await fetch('/api/ai-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flightNumber: raw,
+          hasPriority,
+          hasPaidBag,
+          lang,
+          // No country — we only want baggageInfo resolved
+          country: '',
+          destination: '',
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.baggageInfo?.airline) {
+          const b = data.baggageInfo
+          const aiInfo: FlightInfo = {
+            flightNumber: raw.toUpperCase(),
+            airline: b.airline ?? raw.toUpperCase(),
+            iata: raw.replace(/\d+.*/, '').trim().toUpperCase(),
+            cabinBagSize: b.cabinSize ?? '55×40×20 cm',
+            cabinBagWeight: b.cabinWeightKg,
+            checkedBagWeight: b.checkedWeightKg,
+            priorityBoardingNote: hasPriority ? b.priorityNote : undefined,
+            source: 'api',
+          }
+          setLoading(false)
+          emit({ flightNumber: raw, flightInfo: aiInfo })
+          return
+        }
+      }
+    } catch {
+      // AI lookup failed — fall through to notFound
+    }
+
+    setLoading(false)
+    emit({ flightNumber: raw, flightInfo: null })
+    setNotFound(true)
   }
 
   function handleFlightInput(val: string) {
@@ -127,13 +167,48 @@ export function LuggagePicker({
     emit({ hasPaidBag: v, flightInfo: info })
   }
 
-  function pickAirline(iata: string) {
+  async function pickAirline(iata: string) {
     const fake = `${iata}001`
     setInputFlight(fake)
     setShowAirlines(false)
     const info = lookupFlightBaggage(fake, hasPriority, hasPaidBag)
-    emit({ flightNumber: fake, flightInfo: info })
-    setNotFound(!info)
+    if (info) {
+      emit({ flightNumber: fake, flightInfo: info })
+      setNotFound(false)
+      return
+    }
+    // AI fallback for airlines not in local DB
+    setLoading(true)
+    try {
+      const res = await fetch('/api/ai-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flightNumber: fake, hasPriority, hasPaidBag, lang, country: '', destination: '' }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.baggageInfo?.airline) {
+          const b = data.baggageInfo
+          const aiInfo: FlightInfo = {
+            flightNumber: fake,
+            airline: b.airline ?? iata,
+            iata,
+            cabinBagSize: b.cabinSize ?? '55×40×20 cm',
+            cabinBagWeight: b.cabinWeightKg,
+            checkedBagWeight: b.checkedWeightKg,
+            priorityBoardingNote: hasPriority ? b.priorityNote : undefined,
+            source: 'api',
+          }
+          emit({ flightNumber: fake, flightInfo: aiInfo })
+          setNotFound(false)
+          setLoading(false)
+          return
+        }
+      }
+    } catch { /* fall through */ }
+    setLoading(false)
+    emit({ flightNumber: fake, flightInfo: null })
+    setNotFound(true)
   }
 
   const isLargeIcon = (v: LuggageType) => v === 'kufor-velky'
@@ -273,8 +348,8 @@ export function LuggagePicker({
             <AlertCircle className="size-4 text-amber-700 dark:text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
             <p className="text-xs text-amber-800 dark:text-amber-300">
               {lang === 'sk'
-                ? 'Leteckú spoločnosť sa nepodarilo rozpoznať. Skontroluj pravidlá batožiny priamo na webe spoločnosti.'
-                : 'Airline not recognised. Please check baggage rules directly on the airline website.'}
+                ? 'Leteckú spoločnosť sa nepodarilo rozpoznať ani cez AI. Skontroluj formát čísla letu (napr. FR1234, W65678) alebo pravidlá priamo na webe spoločnosti.'
+                : 'Airline not recognised even via AI. Check the flight number format (e.g. FR1234, W65678) or look up baggage rules on the airline website.'}
             </p>
           </div>
         )}
