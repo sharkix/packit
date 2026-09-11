@@ -12,7 +12,7 @@ jobs:
   auto-merge:
     name: Merge after approval
     runs-on: ubuntu-latest
-    if: github.event.review.state == 'approved'
+    if: github.event.review.state == 'approved' && !github.event.pull_request.draft
     steps:
       - name: Merge PR (auto-merge with direct fallback)
         env:
