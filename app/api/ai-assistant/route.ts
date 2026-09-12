@@ -3,7 +3,7 @@ import { failureResponse, runStructured } from '@/lib/ai-model'
 import { CATEGORY_ENUM, PACKING_PRINCIPLES, describeList, describeTrip } from '@/lib/ai-context'
 import type { ChatMessage, PackItem, TripConfig } from '@/lib/types'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 const AssistantSchema = z.object({
   reply: z.string().describe(

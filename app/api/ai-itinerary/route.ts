@@ -3,7 +3,7 @@ import { failureResponse, runStructured } from '@/lib/ai-model'
 import { describeTrip } from '@/lib/ai-context'
 import type { TripConfig } from '@/lib/types'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 const ItinerarySchema = z.object({
   title: z.string().describe('Krátky výstižný názov cesty po slovensky, napr. "Dolomity na ľahko"'),

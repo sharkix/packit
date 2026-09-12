@@ -103,6 +103,7 @@ export async function runStructured<T extends z.ZodTypeAny>(
   let last: AiFailure = { reason: 'other', detail: 'No model attempted' }
 
   for (const modelId of chain) {
+    const startedAt = Date.now()
     try {
       const { object } = await generateObject({
         model: gateway(modelId),
@@ -113,12 +114,16 @@ export async function runStructured<T extends z.ZodTypeAny>(
         // the wait before a gated model gives up.
         maxRetries: 1,
       })
+      console.log(`[${tag}] ${modelId} ok in ${Date.now() - startedAt}ms`)
       // generateObject widens the return type for generic schemas; the schema
       // itself has already validated the shape at runtime.
       return { ok: true, object: object as z.infer<T> }
     } catch (err) {
       last = classifyFailure(err)
-      console.error(`[${tag}] model ${modelId} failed (${last.reason}):`, last.detail)
+      console.error(
+        `[${tag}] ${modelId} failed after ${Date.now() - startedAt}ms (${last.reason}):`,
+        last.detail,
+      )
       if (last.reason === 'config') break // a bad key fails identically on every model
       if (!isRetryableOnSameModel(last.reason) && chain.indexOf(modelId) === chain.length - 1) break
     }

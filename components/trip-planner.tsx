@@ -357,7 +357,6 @@ export function TripPlanner() {
               litres: a.litres,
               grams: a.grams,
               bag: a.bag,
-              legIds: a.legIds,
               highlight: highlighted.has(a.name.toLowerCase()),
             }))
           return [...kept, ...additions]
