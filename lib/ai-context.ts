@@ -108,11 +108,13 @@ export function describeList(items: PackItem[], cfg: TripConfig): string {
     arr.push(i)
     byCat.set(i.category, arr)
   }
+  // One line per category rather than per item: the model needs to know what
+  // is already covered, not the full record of each entry.
   const lines = [...byCat.entries()].map(([cat, list]) => {
-    const rows = list
-      .map((i) => `    - ${i.name}${i.qty ? ` ×${i.qty}` : ''}${i.bag === 'naSebe' ? ' [na sebe]' : ''}${i.checked ? ' ✓' : ''}`)
-      .join('\n')
-    return `  ${CATEGORY_LABELS[cat] ?? cat}:\n${rows}`
+    const names = list
+      .map((i) => `${i.name}${i.qty ? ` ×${i.qty}` : ''}${i.bag === 'naSebe' ? '(na sebe)' : ''}`)
+      .join(', ')
+    return `  ${CATEGORY_LABELS[cat] ?? cat}: ${names}`
   })
 
   return `AKTUÁLNY ZOZNAM (${items.length} položiek):
