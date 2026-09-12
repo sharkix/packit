@@ -1,28 +1,28 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { MapPin, Loader2 } from 'lucide-react'
+import { Loader2, MapPin, X } from 'lucide-react'
 import { searchDestinations } from '@/lib/weather'
 import type { GeoResult } from '@/lib/types'
 import { useLang } from '@/lib/i18n'
+import { cx } from './ui'
 
 function useDebouncedValue(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const last = useRef(value)
-  if (last.current !== value) {
-    last.current = value
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => setDebounced(value), delay)
-  }
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(id)
+  }, [value, delay])
   return debounced
 }
 
 export function DestinationAutocomplete({
+  id,
   selected,
   onSelect,
 }: {
+  id: string
   selected: GeoResult | null
   onSelect: (dest: GeoResult | null) => void
 }) {
@@ -31,13 +31,17 @@ export function DestinationAutocomplete({
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const debouncedQuery = useDebouncedValue(query, 300)
+  const listboxId = `${id}-listbox`
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current)
+  }, [])
 
   const { data: results, isLoading } = useSWR(
-    debouncedQuery.trim().length >= 2 && open
-      ? ['geocode', debouncedQuery.trim(), lang]
-      : null,
+    debouncedQuery.trim().length >= 2 && open ? ['geocode', debouncedQuery.trim(), lang] : null,
     ([, q, l]) => searchDestinations(q, l),
-    { keepPreviousData: true },
+    { keepPreviousData: true, revalidateOnFocus: false },
   )
 
   const displayValue = selected
@@ -51,31 +55,36 @@ export function DestinationAutocomplete({
     setActiveIndex(-1)
   }
 
+  function clear() {
+    onSelect(null)
+    setQuery('')
+    setOpen(false)
+  }
+
+  const showList = open && !selected && (results?.length ?? 0) > 0
+
   return (
     <div className="relative">
-      <label
-        htmlFor="destination"
-        className="mb-1.5 block text-sm font-semibold"
-      >
+      <label htmlFor={id} className="mb-1.5 block text-sm font-semibold">
         {t.destination}
       </label>
       <div className="relative">
         <MapPin
-          className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute left-3.5 top-1/2 size-4.5 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
         />
         <input
-          id="destination"
+          id={id}
           type="text"
           role="combobox"
-          aria-expanded={open && (results?.length ?? 0) > 0}
-          aria-controls="destination-listbox"
+          aria-expanded={showList}
+          aria-controls={listboxId}
           aria-autocomplete="list"
           autoComplete="off"
           placeholder={t.destinationPlaceholder}
           value={displayValue}
           onChange={(e) => {
-            onSelect(null)
+            if (selected) onSelect(null)
             setQuery(e.target.value)
             setOpen(true)
             setActiveIndex(-1)
@@ -83,9 +92,11 @@ export function DestinationAutocomplete({
           onFocus={() => {
             if (!selected && query.trim().length >= 2) setOpen(true)
           }}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onBlur={() => {
+            blurTimer.current = setTimeout(() => setOpen(false), 150)
+          }}
           onKeyDown={(e) => {
-            if (!open || !results?.length) return
+            if (!showList || !results?.length) return
             if (e.key === 'ArrowDown') {
               e.preventDefault()
               setActiveIndex((i) => Math.min(i + 1, results.length - 1))
@@ -93,7 +104,7 @@ export function DestinationAutocomplete({
               e.preventDefault()
               setActiveIndex((i) => Math.max(i - 1, 0))
             } else if (e.key === 'Enter') {
-              if (e.nativeEvent.isComposing || e.keyCode === 229) return
+              if (e.nativeEvent.isComposing) return
               if (activeIndex >= 0) {
                 e.preventDefault()
                 pick(results[activeIndex])
@@ -102,21 +113,31 @@ export function DestinationAutocomplete({
               setOpen(false)
             }
           }}
-          className="w-full rounded-xl border border-input bg-card py-3 pl-10 pr-10 text-base outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+          className="w-full rounded-xl border border-input bg-card py-3 pl-10.5 pr-10 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/25"
         />
         {isLoading && (
           <Loader2
-            className="absolute right-3 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground"
+            className="absolute right-3 top-1/2 size-4.5 -translate-y-1/2 animate-spin text-muted-foreground"
             aria-hidden="true"
           />
         )}
+        {!isLoading && selected && (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label={t.removeItem}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      {open && results && results.length > 0 && !selected && (
+      {showList && results && (
         <ul
-          id="destination-listbox"
+          id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+          className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-lift)]"
         >
           {results.map((r, i) => (
             <li key={r.id} role="option" aria-selected={i === activeIndex}>
@@ -127,18 +148,17 @@ export function DestinationAutocomplete({
                   pick(r)
                 }}
                 onMouseEnter={() => setActiveIndex(i)}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                  i === activeIndex ? 'bg-muted' : ''
-                }`}
+                className={cx(
+                  'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
+                  i === activeIndex && 'bg-muted',
+                )}
               >
-                <MapPin
-                  className="size-4 shrink-0 text-primary"
-                  aria-hidden="true"
-                />
+                <MapPin className="size-4 shrink-0 text-primary" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{r.name}</span>
                   <span className="block truncate text-sm text-muted-foreground">
                     {[r.admin1, r.country].filter(Boolean).join(', ')}
+                    {r.elevation != null ? ` · ${Math.round(r.elevation)} m` : ''}
                   </span>
                 </span>
               </button>

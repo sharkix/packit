@@ -9,6 +9,8 @@ const AIRLINE_RULES: Record<
     name: string
     cabinBagSize: string
     cabinBagWeight?: number
+    /** Free under-seat personal item — the size that actually matters for one-bag travel */
+    personalItemSize?: string
     /** Weight included in base fare */
     checkedIncluded?: number
     /** Default paid hold-bag weight */
@@ -19,6 +21,7 @@ const AIRLINE_RULES: Record<
   FR: {
     name: 'Ryanair',
     cabinBagSize: '40×20×25 cm',
+    personalItemSize: '40×20×25 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 20,
     priorityNote: 'Priority: kabínová batožina 55×40×20 cm + malý batoh do sedadla',
@@ -26,6 +29,7 @@ const AIRLINE_RULES: Record<
   W6: {
     name: 'Wizz Air',
     cabinBagSize: '40×30×20 cm',
+    personalItemSize: '40×30×20 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 23,
     priorityNote: 'WIZZ Priority: kabínový kufrík 55×40×23 cm zdarma do kabíny',
@@ -33,12 +37,14 @@ const AIRLINE_RULES: Record<
   VY: {
     name: 'Vueling',
     cabinBagSize: '40×20×25 cm',
+    personalItemSize: '40×30×20 cm',
     checkedPaidDefault: 23,
     priorityNote: 'Optima tarif: kabínový kufrík 55×40×20 cm do kabíny',
   },
   U2: {
     name: 'easyJet',
     cabinBagSize: '45×36×20 cm',
+    personalItemSize: '45×36×20 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 23,
     priorityNote: 'Speedy Boarding: kabínový kufrík 56×45×25 cm do kabíny',
@@ -46,6 +52,7 @@ const AIRLINE_RULES: Record<
   OK: {
     name: 'Czech Airlines',
     cabinBagSize: '55×45×25 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -54,6 +61,7 @@ const AIRLINE_RULES: Record<
   LO: {
     name: 'LOT Polish Airlines',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×35×12 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -62,6 +70,7 @@ const AIRLINE_RULES: Record<
   LH: {
     name: 'Lufthansa',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×30×10 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -70,6 +79,7 @@ const AIRLINE_RULES: Record<
   OS: {
     name: 'Austrian Airlines',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×30×10 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -78,6 +88,7 @@ const AIRLINE_RULES: Record<
   SK: {
     name: 'SAS',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -86,6 +97,7 @@ const AIRLINE_RULES: Record<
   BA: {
     name: 'British Airways',
     cabinBagSize: '56×45×25 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: undefined,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -94,6 +106,7 @@ const AIRLINE_RULES: Record<
   KL: {
     name: 'KLM',
     cabinBagSize: '55×35×25 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 12,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -102,6 +115,7 @@ const AIRLINE_RULES: Record<
   AF: {
     name: 'Air France',
     cabinBagSize: '55×35×25 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 12,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -110,6 +124,7 @@ const AIRLINE_RULES: Record<
   TK: {
     name: 'Turkish Airlines',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -118,6 +133,7 @@ const AIRLINE_RULES: Record<
   IB: {
     name: 'Iberia',
     cabinBagSize: '56×36×23 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 10,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -126,6 +142,7 @@ const AIRLINE_RULES: Record<
   AZ: {
     name: 'ITA Airways',
     cabinBagSize: '55×35×25 cm',
+    personalItemSize: '45×36×20 cm',
     cabinBagWeight: 8,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -134,6 +151,7 @@ const AIRLINE_RULES: Record<
   EW: {
     name: 'Eurowings',
     cabinBagSize: '55×40×23 cm',
+    personalItemSize: '40×30×10 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 23,
     priorityNote: 'Smart tarif: kabína zahrnutá',
@@ -141,6 +159,7 @@ const AIRLINE_RULES: Record<
   HV: {
     name: 'Transavia',
     cabinBagSize: '55×35×25 cm',
+    personalItemSize: '40×30×20 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 20,
     priorityNote: 'Basic: kabínový kufrík za príplatok',
@@ -148,6 +167,7 @@ const AIRLINE_RULES: Record<
   TP: {
     name: 'TAP Air Portugal',
     cabinBagSize: '55×40×20 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 10,
     checkedIncluded: 23,
     checkedPaidDefault: 23,
@@ -156,6 +176,7 @@ const AIRLINE_RULES: Record<
   BT: {
     name: 'airBaltic',
     cabinBagSize: '55×40×20 cm',
+    personalItemSize: '40×30×20 cm',
     cabinBagWeight: undefined,
     checkedPaidDefault: 23,
     priorityNote: 'Business: kabína v cene, economy za príplatok',
@@ -163,6 +184,7 @@ const AIRLINE_RULES: Record<
   QR: {
     name: 'Qatar Airways',
     cabinBagSize: '50×37×25 cm',
+    personalItemSize: '40×30×15 cm',
     cabinBagWeight: 7,
     checkedIncluded: 30,
     checkedPaidDefault: 30,
@@ -171,6 +193,7 @@ const AIRLINE_RULES: Record<
   EK: {
     name: 'Emirates',
     cabinBagSize: '55×38×20 cm',
+    personalItemSize: '40×30×20 cm',
     cabinBagWeight: 7,
     checkedIncluded: 35,
     checkedPaidDefault: 35,
@@ -203,6 +226,7 @@ export function lookupFlightBaggage(
     iata,
     cabinBagSize: hasPriority ? (PRIORITY_SIZE[iata] ?? rule.cabinBagSize) : rule.cabinBagSize,
     cabinBagWeight: rule.cabinBagWeight,
+    personalItemSize: rule.personalItemSize,
     checkedBagWeight: hasPaidBag
       ? (rule.checkedPaidDefault ?? 23)
       : rule.checkedIncluded,

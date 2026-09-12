@@ -6,3 +6,4 @@ out/
 .env.local
 .DS_Store
 pnpm-workspace.yaml
+next-env.d.ts

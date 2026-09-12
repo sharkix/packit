@@ -1,57 +1,204 @@
 @import 'tailwindcss';
 
+/* Dark mode is driven by a class on <html>, set before paint by an inline
+   script in the layout, so there is no flash of the wrong theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), 'Iowan Old Style', Georgia, serif;
 
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-sea: var(--sea);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-coral: var(--coral);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 4px);
-  --radius-sm: calc(var(--radius) - 8px);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  --shadow-card: 0 1px 2px rgb(15 53 60 / 0.04), 0 10px 30px -12px rgb(15 53 60 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(15 53 60 / 0.05), 0 18px 45px -18px rgb(15 53 60 / 0.28);
 }
 
 :root {
-  --background: #faf8f4;
-  --foreground: #16303a;
+  --background: #f5f4ef;
+  --surface: #ebe9e1;
+  --foreground: #11303a;
   --card: #ffffff;
-  --card-foreground: #16303a;
-  --primary: #0e7c86;
+  --card-foreground: #11303a;
+  --primary: #0d5c63;
   --primary-foreground: #ffffff;
-  --secondary: #f0ece4;
-  --secondary-foreground: #16303a;
-  --muted: #f0ece4;
-  --muted-foreground: #64707a;
-  --accent: #f59e0b;
-  --accent-foreground: #3b2a06;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #e6e0d5;
-  --input: #e6e0d5;
-  --ring: #0e7c86;
-  --radius: 0.75rem;
+  --sea: #0b8191;
+  --accent: #e0a622;
+  --accent-foreground: #3a2a04;
+  --coral: #d1594a;
+  --muted: #e9e7df;
+  --muted-foreground: #61757b;
+  --border: #ddd9cf;
+  --input: #d4cfc3;
+  --ring: #0b8191;
+  --success: #167548;
+  --warning: #a35b12;
+  --destructive: #c0392f;
+}
+
+.dark {
+  --background: #0c1418;
+  --surface: #101c21;
+  --foreground: #e8efee;
+  --card: #142227;
+  --card-foreground: #e8efee;
+  --primary: #4fb3bf;
+  --primary-foreground: #06171a;
+  --sea: #6bcad4;
+  --accent: #f0c14b;
+  --accent-foreground: #241a02;
+  --coral: #f08573;
+  --muted: #1b2c32;
+  --muted-foreground: #93a8ac;
+  --border: #22363d;
+  --input: #2b424a;
+  --ring: #4fb3bf;
+  --success: #4ec08a;
+  --warning: #e0a655;
+  --destructive: #f0736a;
 }
 
 * {
   border-color: var(--border);
 }
 
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial display type, used for page and section titles only. */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Subtle paper texture behind the whole app — keeps large flat areas alive
+   without costing an image request. */
+.paper-grade {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, color-mix(in oklab, var(--sea) 14%, transparent), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent);
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input[type='checkbox'] {
+  accent-color: var(--primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Horizontal rails (day tabs, forecast strips) */
+.rail {
+  scrollbar-width: thin;
+  scrollbar-color: var(--input) transparent;
+}
+
+.rail::-webkit-scrollbar {
+  height: 6px;
+}
+
+.rail::-webkit-scrollbar-thumb {
+  background: var(--input);
+  border-radius: 999px;
+}
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: fade-rise 0.28s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Print: just the checklist ─────────────────────────────────────────── */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-plain {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    break-inside: avoid;
+  }
 }

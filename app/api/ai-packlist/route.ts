@@ -1,171 +1,91 @@
-import { generateObject } from 'ai'
-import { gateway } from 'ai'
+import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
-import type { TripConfig } from '@/lib/types'
+import { CATEGORY_ENUM, PACKING_PRINCIPLES, describeList, describeTrip } from '@/lib/ai-context'
+import type { PackItem, TripConfig } from '@/lib/types'
 
-// Schema for AI-generated additions/modifications to the base packing list
+export const maxDuration = 60
+
 const AiPacklistSchema = z.object({
   reasoning: z.string().describe(
-    'Brief explanation of the main personalization decisions made (1-3 sentences, in Slovak)'
+    'Po slovensky, 2–4 vety: aké hlavné rozhodnutia si urobil pre TÚTO cestu (vrstvenie, objem batožiny, presuny).',
+  ),
+  strategy: z.string().describe(
+    'Po slovensky, jedna veta: stratégia balenia pre túto cestu, napr. "Jedno jadro merino vrstiev na 12–28 °C, turistické topánky na nohách, všetko ostatné do 40 l".',
   ),
   additions: z.array(
     z.object({
-      category: z.enum([
-        'itinerar', 'doklady', 'batazina', 'oblecenie', 'obuv', 'hygiena',
-        'lekarnicka', 'elektronika', 'plaz', 'hory', 'mesto',
-        'auto', 'geocaching', 'vylet', 'predodchodom',
-      ]),
-      name: z.string().describe('Item name in Slovak'),
-      qty: z.number().optional().describe('Quantity, omit if not countable'),
-      note: z.string().optional().describe('Optional short tip or explanation in Slovak'),
-    })
-  ).describe('New items to add on top of the base generated list'),
+      category: z.enum(CATEGORY_ENUM),
+      name: z.string().describe('Názov položky po slovensky'),
+      qty: z.number().optional().describe('Počet kusov, vynechaj ak sa nepočíta'),
+      note: z.string().optional().describe('Krátke vysvetlenie alebo tip po slovensky'),
+      litres: z.number().describe('Odhad zabaleného objemu v litroch za kus (napr. tričko 0.7, bunda 1.2, topánky 5)'),
+      grams: z.number().describe('Odhad hmotnosti v gramoch za kus'),
+      bag: z.enum(['osobna', 'kabinova', 'odbavena', 'naSebe']).describe(
+        'Kam to patrí. naSebe = nesie sa na tele v deň cesty a nezaberá miesto v batožine.',
+      ),
+      legIds: z.array(z.string()).optional().describe(
+        'ID zastávok, pre ktoré je položka potrebná. Vynechaj, ak platí pre celú cestu.',
+      ),
+    }),
+  ).describe('Nové položky, ktoré základný zoznam vynechal. Kvalita nad kvantitou — max 15.'),
   removals: z.array(z.string()).describe(
-    'Names of base-list items that should be removed as irrelevant for this specific trip'
+    'Presné názvy položiek zo základného zoznamu, ktoré sú pre túto cestu zbytočné alebo sa nezmestia.',
   ),
   highlights: z.array(z.string()).describe(
-    'Names of items (from base list or additions) that are especially important for this trip — shown with a star'
+    'Presné názvy 4–7 najdôležitejších položiek pre túto cestu.',
   ),
   weatherNote: z.string().optional().describe(
-    'One-sentence personalised weather advice for packing, in Slovak'
+    'Jedna veta po slovensky o tom, čo znamená predpoveď pre balenie.',
   ),
+  capacityVerdict: z.object({
+    verdict: z.enum(['ok', 'tesne', 'nezmesti']).describe('Či sa zoznam zmestí do batožiny'),
+    advice: z.string().describe('Po slovensky, 1–2 vety: čo konkrétne uberať alebo ako to natlačiť.'),
+  }),
 })
 
 export type AiPacklistResult = z.infer<typeof AiPacklistSchema>
 
-function buildPrompt(cfg: TripConfig): string {
-  const w = cfg.weather
-  const days = cfg.startDate && cfg.endDate
-    ? Math.max(1, Math.round((new Date(cfg.endDate).getTime() - new Date(cfg.startDate).getTime()) / 86400000) + 1)
-    : 7
+interface Body {
+  cfg: TripConfig
+  items: PackItem[]
+}
 
-  const weatherDesc = w
-    ? `Počasie v destinácii: avg max ${w.avgMax}°C, avg min ${w.avgMin}°C, ${w.rainyDays} daždivých dní z ${days}. ` +
-      `Charakteristika: ${[w.hot && 'horúco', w.warm && 'teplo', w.cold && 'chladno', w.freezing && 'mrazivo', w.rainy && 'daždivo'].filter(Boolean).join(', ') || 'mierne'}.` +
-      (w.isEstimate ? ' (predpoveď je odhad z historických dát)' : '')
-    : 'Počasie nie je dostupné.'
+function buildPrompt({ cfg, items }: Body): string {
+  const legIds = cfg.legs
+    .filter((l) => l.destination)
+    .map((l) => `${l.id} = ${l.destination?.name}`)
+    .join(', ')
 
-  const destDesc = [
-    cfg.destination.name,
-    cfg.destination.admin1,
-    cfg.destination.country,
-  ].filter(Boolean).join(', ')
+  return `Si expert na balenie na aktívne cesty s presunmi a obmedzenou batožinou. Dostávaš už vygenerovaný základný zoznam a tvojou úlohou je ho DOLADIŤ pre túto konkrétnu cestu.
 
-  const elevation = cfg.destination.elevation
-    ? `Nadmorská výška: ${cfg.destination.elevation} m.`
-    : ''
+${describeTrip(cfg)}
 
-  const genderText = cfg.gender === 'zena' ? 'žena' : cfg.gender === 'muz' ? 'muž' : 'pohlavie neuvedené'
-  const tripTypeText = cfg.tripTypes.length
-    ? cfg.tripTypes.map(t => ({ more: 'more/pláž', hory: 'hory/turistika', mesto: 'mesto/kultúra' }[t])).join(' + ')
-    : 'všeobecná dovolenka'
+ID ZASTÁVOK: ${legIds || 'žiadne'}
 
-  const pieceLabels: Record<string, string> = {
-    osobna: 'malý ruksak (osobná batožina pod sedadlo)',
-    kabinova: 'kabínový kufrík',
-    odbavena: 'odbavený kufor',
-  }
-  const luggageText = cfg.luggagePieces?.length
-    ? cfg.luggagePieces.map((p) => pieceLabels[p] ?? p).join(' + ') +
-      (cfg.luggagePieces.length === 1 && cfg.luggagePieces[0] === 'osobna' ? ' (VEĽMI obmedzený priestor!)' : '')
-    : {
-        'ruksak': 'len cestovný ruksak (obmedzený priestor!)',
-        'ruksak+kabinka': 'malý batoh + kabínkový kufrík',
-        'kufor-maly': 'malý kabínový kufrík',
-        'kufor-velky': 'veľký kufrík v hold',
-      }[cfg.luggageType]
+${describeList(items, cfg)}
 
-  const extrasText = [
-    cfg.carRental && 'požičané auto',
-    cfg.geocaching && 'geocaching',
-    cfg.optionalTrip && 'fakultatívny výlet',
-  ].filter(Boolean).join(', ') || 'žiadne'
+${PACKING_PRINCIPLES}
 
-  const transportText = {
-    lietadlo: 'letecky',
-    auto: 'vlastným autom (žiadne váhové limity batožiny, ale povinná výbava auta, diaľničné známky, zelená karta)',
-    vlak: 'vlakom (batožinu treba prenášať, cennosti pri sebe)',
-    autobus: 'autobusom (batožinu treba prenášať, cennosti pri sebe)',
-    ine: `iným spôsobom: ${cfg.transportOther || 'neupresnené'}`,
-  }[cfg.transport ?? 'lietadlo']
+ČO OD TEBA CHCEM:
+• "additions" — čo v zozname chýba práve pre TÚTO cestu. Zameraj sa na: špecifiká destinácie a terénu, konkrétne aktivity, veci potrebné pri presunoch medzi zastávkami, požiadavky krajiny (redukcia, hotovosť, vakcíny, dress code), sezónne riziká. Ku každej položke povinne uveď litre aj gramy, nech sa dá prepočítať objem.
+• "removals" — čo je v zozname zbytočné. Buď prísny, ak je batožina malá: pri objeme do 45 l musíš niečo vyhodiť.
+• "highlights" — položky, na ktorých táto cesta stojí alebo padá.
+• "capacityVerdict" — porovnaj súčet objemu so skutočnou kapacitou batožiny a povedz pravdu. Ak sa to nezmestí, napíš KTORÉ konkrétne položky obetovať.
 
-  const accommodationText = {
-    hotel: 'hotel/penzión (uteráky, sušič vlasov a základná hygiena sú k dispozícii)',
-    privat: 'apartmán/privát (NIE SÚ uteráky, hygiena ani potraviny — treba si doniesť!)',
-    kemp: 'kemping (treba kompletné vybavenie: stan, spacák, varič...)',
-    ine: `iné: ${cfg.accommodationOther || 'neupresnené'}`,
-  }[cfg.accommodation ?? 'hotel']
-
-  const flightText = cfg.transport !== 'lietadlo'
-    ? `Doprava: ${transportText}`
-    : cfg.flightInfo
-      ? `Doprava: letecky — ${cfg.flightInfo.airline} (${cfg.flightInfo.iata}), kabína: ${cfg.flightInfo.cabinBagSize}` +
-        (cfg.flightInfo.cabinBagWeight ? `, max ${cfg.flightInfo.cabinBagWeight} kg` : '') +
-        (cfg.hasPriority ? ', má priority boarding' : '') +
-        (cfg.hasPaidBag ? ', zaplatená väčšia batožina' : '')
-      : cfg.flightNumber
-        ? `Doprava: letecky — číslo letu: ${cfg.flightNumber}`
-        : 'Doprava: letecky (bez špecifík letu)'
-
-  // Country info context
-  const ci = cfg.countryInfo
-  const countryContext = ci
-    ? [
-        `Mena: ${ci.currency} (${ci.currencySymbol}) — ${ci.cashTip}`,
-        `Elektrina: ${ci.plugAdapter.type}, ${ci.plugAdapter.voltage}/${ci.plugAdapter.frequency}${ci.plugAdapter.needsAdapter ? ` — TREBA REDUKCIU: ${ci.plugAdapter.adapterNote}` : ' — redukcia nie je potrebná'}`,
-        `Víza/vstup: ${ci.visaNote}`,
-        ci.safetyNote ? `Bezpečnosť: ${ci.safetyNote}` : '',
-        ci.healthTips?.length ? `Zdravie: ${ci.healthTips.join('; ')}` : '',
-        ci.localTips?.length ? `Miestne tipy: ${ci.localTips.join('; ')}` : '',
-        ci.baggageInfo?.airline
-          ? `AI batožina (${ci.baggageInfo.airline}): kabína ${ci.baggageInfo.cabinSize ?? '?'}${ci.baggageInfo.cabinWeightKg ? `, max ${ci.baggageInfo.cabinWeightKg} kg` : ''}${ci.baggageInfo.checkedWeightKg ? `, odbavená max ${ci.baggageInfo.checkedWeightKg} kg` : ''}`
-          : '',
-      ].filter(Boolean).join('\n- ')
-    : 'Nie sú dostupné.'
-
-  return `Si expert na cestovanie a personalizované packing listy. Dostaneš základnú štruktúru packlistu a musíš navrhnúť DOPLNKY a ÚPRAVY, aby bol list čo najlepšie prispôsobený tejto konkrétnej ceste.
-
-INFORMÁCIE O CESTE:
-- Destinácia: ${destDesc}
-- ${elevation}
-- Dátum: ${cfg.startDate} → ${cfg.endDate} (${days} dní)
-- ${cfg.startTime ? `Odchod o ${cfg.startTime}` : ''}${cfg.endTime ? `, návrat o ${cfg.endTime}` : ''}
-- Cestovateľ: ${genderText}
-- Typ cesty: ${tripTypeText}
-- ${weatherDesc}
-- ${flightText}
-${cfg.transport === 'lietadlo' ? `- Batožina: ${luggageText}` : ''}
-- Ubytovanie: ${accommodationText}
-- Extras: ${extrasText}
-
-KRAJINOVÉ INFORMÁCIE (zistené AI):
-- ${countryContext}
-
-POKYNY:
-1. V "additions" navrhni konkrétne položky, ktoré základný zoznam vynechal. Zvaž:
-   - Ak TREBA REDUKCIU (podľa krajinových info): pridaj "Cestovná redukcia do zásuvky (Typ X)" do kategórie "elektronika"
-   - Ak mena NIE JE euro a karty nemusia fungovať: pridaj "Hotovosť v [mene]" do kategórie "doklady"
-   - Zdravotné odporúčania: ak sú uvedené vakcíny, pridaj "Potvrdenie o očkovaní" alebo príslušné lieky
-   - Lokálne kultúrne požiadavky: dress code, špeciálne povolenia, zálohy
-   - Špecifiká destinácie, terén, sezóna, aktivity
-   - Ak LEN osobná batožina (malý ruksak bez kabínovej/odbavenej): maximálna efektívnosť, odľahčenie, minimalizmus
-   - DOPRAVA: ak ide autom — povinná výbava, prestávky, občerstvenie; ak vlakom/autobusom — zabezpečenie batožiny; NIKDY nespomínaj letecké limity ak sa neletí
-   - BATOŽINOVÉ LIMITY AEROLÍNIE: ak sú uvedené konkrétne rozmery/váhy (z čísla letu alebo AI batožiny), AKTÍVNE s nimi pracuj — prispôsob množstvo oblečenia objemu batožiny, navrhni vyhodenie objemných položiek pri malej batožine, pri prísnych limitoch (napr. Ryanair/Wizz 10 kg) upozorni na váženie
-   - UBYTOVANIE: privát/apartmán = doniesť uteráky, hygienu, základné potraviny; kemp = kompletné vybavenie; hotel = netreba uteráky ani sušič
-2. V "removals" označ položky zbytočné pre túto konkrétnu cestu (napr. letecké položky ak sa neletí, uteráky ak je hotel).
-3. V "highlights" vyber 3-6 KĽÚČOVÝCH položiek (pas, redukcia ak treba, lieky, SPF, atď.).
-4. Buď konkrétny a relevantný — kvalita nad kvantitou.
-5. Všetky texty píš po SLOVENSKY.`
+Nevymýšľaj letecké pravidlá, ak sa neletí. Nepridávaj kempingové veci, ak sa nekempuje. Všetko píš po SLOVENSKY.`
 }
 
 export async function POST(req: Request) {
   try {
-    const cfg: TripConfig = await req.json()
+    const body: Body = await req.json()
+    if (!body?.cfg?.legs?.length) {
+      return Response.json({ error: 'Missing trip config' }, { status: 400 })
+    }
 
     const { object } = await generateObject({
       model: gateway('anthropic/claude-sonnet-5'),
       schema: AiPacklistSchema,
-      prompt: buildPrompt(cfg),
+      prompt: buildPrompt(body),
       temperature: 0.4,
     })
 
