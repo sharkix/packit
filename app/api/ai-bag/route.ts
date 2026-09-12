@@ -1,5 +1,5 @@
-import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
+import { failureResponse, runStructured } from '@/lib/ai-model'
 
 export const maxDuration = 30
 
@@ -46,8 +46,7 @@ export async function POST(req: Request) {
       body.personalItemLimit ? `Limit osobnej batožiny: ${body.personalItemLimit}` : null,
     ].filter(Boolean).join('\n')
 
-    const { object } = await generateObject({
-      model: gateway('anthropic/claude-sonnet-5'),
+    const result = await runStructured('ai-bag', {
       schema: BagSchema,
       temperature: 0.1,
       prompt: `Si expert na cestovnú batožinu. Používateľ zadal model batožiny: "${query}".
@@ -61,9 +60,10 @@ Pri "fitsCabin" a "fitsUnderSeat" porovnaj REÁLNE rozmery s limitom vyššie a 
 Všetky texty píš po SLOVENSKY (okrem názvu modelu a značky).`,
     })
 
-    return Response.json(object)
+    if (!result.ok) return failureResponse(result.failure)
+    return Response.json(result.object)
   } catch (err) {
     console.error('[ai-bag]', err)
-    return Response.json({ error: 'AI bag lookup failed' }, { status: 500 })
+    return Response.json({ error: 'Bad request', reason: 'other' }, { status: 500 })
   }
 }

@@ -21,6 +21,7 @@ import { POPULAR_AIRLINES, lookupFlightBaggage } from '@/lib/flight'
 import { useLang } from '@/lib/i18n'
 import type { AiBagResult } from '@/app/api/ai-bag/route'
 import type { BagSpec, FlightInfo, LuggagePiece } from '@/lib/types'
+import { aiErrorMessage, readAiError, type AiErrorReason } from '@/lib/ai-error'
 import { Card, Chip, Eyebrow, Toggle, cx, inputClass } from './ui'
 
 const KIND_ICON: Record<LuggagePiece, typeof Backpack> = {
@@ -144,14 +145,14 @@ function BagCard({
   const [query, setQuery] = useState(bag.model ?? '')
   const [loading, setLoading] = useState(false)
   const [tips, setTips] = useState<string[] | null>(null)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<AiErrorReason | null>(null)
   const Icon = KIND_ICON[bag.kind]
 
   async function lookup() {
     const q = query.trim()
     if (!q) return
     setLoading(true)
-    setError(false)
+    setError(null)
     setTips(null)
     try {
       const res = await fetch('/api/ai-bag', {
@@ -165,7 +166,10 @@ function BagCard({
           lang,
         }),
       })
-      if (!res.ok) throw new Error('lookup failed')
+      if (!res.ok) {
+        setError(await readAiError(res))
+        return
+      }
       const data: AiBagResult = await res.json()
       onChange({
         model: data.model || q,
@@ -180,7 +184,7 @@ function BagCard({
       })
       setTips(data.packingTips ?? null)
     } catch {
-      setError(true)
+      setError('other')
     } finally {
       setLoading(false)
     }
@@ -355,9 +359,9 @@ function BagCard({
         )}
 
         {error && (
-          <p className="flex items-center gap-2 text-xs text-destructive">
-            <AlertCircle className="size-3.5" aria-hidden="true" />
-            {t.aiError}
+          <p className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/8 px-3 py-2.5 text-xs text-destructive">
+            <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 text-pretty">{aiErrorMessage(error, t)}</span>
           </p>
         )}
       </div>

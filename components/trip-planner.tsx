@@ -17,6 +17,7 @@ import type { AiAssistantResult } from '@/app/api/ai-assistant/route'
 import type { AiLookupResult } from '@/app/api/ai-lookup/route'
 import type { AiPacklistResult } from '@/app/api/ai-packlist/route'
 import { ACTIVITY_LABELS_SK } from '@/lib/activities'
+import { readAiError, type AiErrorReason } from '@/lib/ai-error'
 import { useLang } from '@/lib/i18n'
 import {
   aggregateClimate,
@@ -138,6 +139,7 @@ export function TripPlanner() {
   const [items, setItems] = useState<PackItem[] | null>(null)
   const [aiStatus, setAiStatus] = useState<AiStatusValue>('idle')
   const [aiResult, setAiResult] = useState<AiPacklistResult | null>(null)
+  const [aiError, setAiError] = useState<AiErrorReason | null>(null)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [weatherLoading, setWeatherLoading] = useState<Record<string, boolean>>({})
 
@@ -316,6 +318,7 @@ export function TripPlanner() {
     setItems(base)
     setStep('list')
     setAiResult(null)
+    setAiError(null)
     setAiStatus('loading')
 
     fetch('/api/ai-packlist', {
@@ -323,9 +326,12 @@ export function TripPlanner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cfg, items: base }),
     })
-      .then((r) => {
-        if (!r.ok) throw new Error('ai failed')
-        return r.json() as Promise<AiPacklistResult>
+      .then(async (r) => {
+        if (!r.ok) {
+          setAiError(await readAiError(r))
+          throw new Error('ai failed')
+        }
+        return (await r.json()) as AiPacklistResult
       })
       .then((result) => {
         setAiResult(result)
@@ -646,6 +652,7 @@ export function TripPlanner() {
           <div className="flex flex-col gap-5">
             <AiStatus
               status={aiStatus}
+              errorReason={aiError}
               reasoning={aiResult?.reasoning}
               strategy={aiResult?.strategy}
               weatherNote={aiResult?.weatherNote}

@@ -5,6 +5,7 @@ import { AlertCircle, Loader2, Send, Sparkles, Wand2, X } from 'lucide-react'
 import type { AiAssistantResult } from '@/app/api/ai-assistant/route'
 import type { ChatMessage, PackItem, TripConfig } from '@/lib/types'
 import { useLang } from '@/lib/i18n'
+import { aiErrorMessage, readAiError, type AiErrorReason } from '@/lib/ai-error'
 import { cx, inputClass } from './ui'
 
 /**
@@ -29,7 +30,7 @@ export function AiAssistant({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<AiErrorReason | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -54,7 +55,7 @@ export function AiAssistant({
     const message = text.trim()
     if (!message || busy) return
     setInput('')
-    setError(false)
+    setError(null)
     const history = messages
     setMessages([...history, { role: 'user', content: message }])
     setBusy(true)
@@ -64,7 +65,10 @@ export function AiAssistant({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cfg, items, history, message }),
       })
-      if (!res.ok) throw new Error('assistant failed')
+      if (!res.ok) {
+        setError(await readAiError(res))
+        return
+      }
       const result: AiAssistantResult = await res.json()
       setMessages((prev) => [
         ...prev,
@@ -74,7 +78,7 @@ export function AiAssistant({
         onApply(result)
       }
     } catch {
-      setError(true)
+      setError('other')
     } finally {
       setBusy(false)
     }
@@ -176,9 +180,9 @@ export function AiAssistant({
           )}
 
           {error && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="size-4" aria-hidden="true" />
-              {t.aiError}
+            <p className="mt-3 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/8 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 text-pretty">{aiErrorMessage(error, t)}</span>
             </p>
           )}
         </div>

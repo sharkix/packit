@@ -1,5 +1,5 @@
-import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
+import { failureResponse, runStructured } from '@/lib/ai-model'
 import { CATEGORY_ENUM, PACKING_PRINCIPLES, describeList, describeTrip } from '@/lib/ai-context'
 import type { PackItem, TripConfig } from '@/lib/types'
 
@@ -82,16 +82,16 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Missing trip config' }, { status: 400 })
     }
 
-    const { object } = await generateObject({
-      model: gateway('anthropic/claude-sonnet-5'),
+    const result = await runStructured('ai-packlist', {
       schema: AiPacklistSchema,
       prompt: buildPrompt(body),
       temperature: 0.4,
     })
 
-    return Response.json(object)
+    if (!result.ok) return failureResponse(result.failure)
+    return Response.json(result.object)
   } catch (err) {
     console.error('[ai-packlist]', err)
-    return Response.json({ error: 'AI generation failed' }, { status: 500 })
+    return Response.json({ error: 'Bad request', reason: 'other' }, { status: 500 })
   }
 }

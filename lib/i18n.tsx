@@ -155,6 +155,10 @@ const SK = {
   aiThinking: 'Rozmýšľam…',
   aiChanged: 'Zmenené',
   aiError: 'Asistent neodpovedal. Skús to znova.',
+  aiErrorCredits:
+    'AI kredit na Vercel AI Gateway je vyčerpaný — bezplatná úroveň tento model nepúšťa. Doplň kredit alebo pridaj vlastný Anthropic kľúč v nastaveniach projektu.',
+  aiErrorRateLimit: 'AI je momentálne preťažená (limit požiadaviek). Skús to o chvíľu znova.',
+  aiErrorConfig: 'AI nie je správne nastavená — chýba alebo neplatí API kľúč.',
   aiSuggest1: 'Zmestí sa mi to do batožiny?',
   aiSuggest2: 'Čo môžem vyhodiť?',
   aiSuggest3: 'Čo mi chýba na daždivý deň?',
@@ -392,6 +396,10 @@ const EN: Dict = {
   aiThinking: 'Thinking…',
   aiChanged: 'Changed',
   aiError: 'The assistant did not answer. Try again.',
+  aiErrorCredits:
+    'Vercel AI Gateway credit is exhausted — the free tier does not allow this model. Top up credit or add your own Anthropic key in the project settings.',
+  aiErrorRateLimit: 'The AI is rate-limited right now. Try again in a moment.',
+  aiErrorConfig: 'The AI is misconfigured — the API key is missing or invalid.',
   aiSuggest1: 'Will this fit in my luggage?',
   aiSuggest2: 'What can I drop?',
   aiSuggest3: 'What am I missing for a rainy day?',
