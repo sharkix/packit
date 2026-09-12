@@ -23,6 +23,7 @@ export function piecesToLegacyLuggage(pieces: LuggagePiece[]): LuggageType {
 }
 
 export const CATEGORY_ORDER = [
+  'itinerar',
   'doklady',
   'batazina',
   'oblecenie',
