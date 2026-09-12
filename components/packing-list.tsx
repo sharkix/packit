@@ -28,6 +28,7 @@ import { CATEGORY_ORDER } from '@/lib/packing'
 import { useLang } from '@/lib/i18n'
 
 const CAT_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>> = {
+  itinerar: Map,
   doklady: FileText,
   batazina: Luggage,
   oblecenie: Shirt,
@@ -45,6 +46,7 @@ const CAT_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 'ar
 }
 
 const CAT_COLOR_MAP: Record<string, string> = {
+  itinerar: 'text-blue-600',
   doklady: 'text-amber-600',
   batazina: 'text-slate-600',
   oblecenie: 'text-sky-600',
@@ -88,6 +90,7 @@ export function PackingList({
 
   function catLabel(cat: string): string {
     const map: Record<string, string> = {
+      itinerar: t.catItinerar,
       doklady: t.catDoklady,
       batazina: t.catBatazina,
       oblecenie: t.catOblecenie,

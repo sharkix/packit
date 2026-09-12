@@ -11,7 +11,7 @@ const AiPacklistSchema = z.object({
   additions: z.array(
     z.object({
       category: z.enum([
-        'doklady', 'batazina', 'oblecenie', 'obuv', 'hygiena',
+        'itinerar', 'doklady', 'batazina', 'oblecenie', 'obuv', 'hygiena',
         'lekarnicka', 'elektronika', 'plaz', 'hory', 'mesto',
         'auto', 'geocaching', 'vylet', 'predodchodom',
       ]),
