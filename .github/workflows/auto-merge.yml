@@ -14,16 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.review.state == 'approved' && github.event.pull_request.draft == false
     steps:
-      - name: Merge PR (auto-merge with direct fallback)
+      - name: Merge PR via REST API
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Try auto-merge first (waits for required checks if any exist);
-          # if the PR is already in clean status, merge it directly.
-          gh pr merge ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} \
-            --squash \
-            --auto \
-          || gh pr merge ${{ github.event.pull_request.number }} \
-            --repo ${{ github.repository }} \
-            --squash
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/merge \
+            -f merge_method='squash'
