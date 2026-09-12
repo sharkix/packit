@@ -1,157 +1,115 @@
 'use client'
 
 import {
-  Zap,
+  AlertCircle,
   Banknote,
-  ShieldCheck,
   HeartPulse,
   Lightbulb,
-  Phone,
-  Luggage,
   Loader2,
-  AlertCircle,
+  Luggage,
+  Phone,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react'
 import type { CountryInfo } from '@/lib/types'
+import { useLang } from '@/lib/i18n'
+import { Card, Eyebrow } from './ui'
 
-interface CountryInfoCardProps {
-  info: CountryInfo | null
+export function CountryInfoCards({
+  infos,
+  isLoading,
+}: {
+  infos: CountryInfo[]
   isLoading: boolean
-  lang?: 'sk' | 'en'
-}
+}) {
+  const { t } = useLang()
 
-export function CountryInfoCard({ info, isLoading, lang = 'sk' }: CountryInfoCardProps) {
-  if (isLoading) {
+  if (isLoading && infos.length === 0) {
     return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
+      <div className="flex items-center gap-2.5 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-primary">
         <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
-        <span>
-          {lang === 'sk'
-            ? 'AI zisťuje informácie o destinácii…'
-            : 'AI is fetching destination info…'}
-        </span>
+        {t.destInfoLoading}
       </div>
     )
   }
 
-  if (!info) return null
-
-  const t = {
-    currency: lang === 'sk' ? 'Mena' : 'Currency',
-    plug: lang === 'sk' ? 'Elektrina' : 'Electricity',
-    visa: lang === 'sk' ? 'Víza / vstup' : 'Visa / entry',
-    safety: lang === 'sk' ? 'Bezpečnosť' : 'Safety',
-    health: lang === 'sk' ? 'Zdravie' : 'Health',
-    tips: lang === 'sk' ? 'Praktické tipy' : 'Local tips',
-    emergency: lang === 'sk' ? 'Tieseň' : 'Emergency',
-    baggage: lang === 'sk' ? 'Batožina (AI)' : 'Baggage (AI)',
-    noAdapter: lang === 'sk' ? 'Redukcia nie je potrebná' : 'No adapter needed',
-    confidenceLow: lang === 'sk' ? 'nízka istota' : 'low confidence',
-    confidenceMed: lang === 'sk' ? 'stredná istota' : 'medium confidence',
-  }
+  if (infos.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold">
-        {lang === 'sk' ? 'Informácie o destinácii' : 'Destination info'}
-      </h3>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <Eyebrow>{t.destInfo}</Eyebrow>
+        {isLoading && <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />}
+      </div>
+      {infos.map((info) => (
+        <CountryCard key={info.country} info={info} />
+      ))}
+    </section>
+  )
+}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {/* Currency */}
-        <InfoRow icon={Banknote} label={t.currency}>
+function CountryCard({ info }: { info: CountryInfo }) {
+  const { t } = useLang()
+
+  return (
+    <Card className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+      <h3 className="font-display text-lg font-semibold">{info.country}</h3>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <InfoRow icon={Banknote} label={t.infoCurrency}>
           <span className="font-medium">{info.currency}</span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">{info.cashTip}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground text-pretty">{info.cashTip}</span>
         </InfoRow>
 
-        {/* Plug */}
-        <InfoRow icon={Zap} label={t.plug}>
-          <span className="font-medium">{info.plugAdapter.type} · {info.plugAdapter.voltage} / {info.plugAdapter.frequency}</span>
+        <InfoRow icon={Zap} label={t.infoPlug}>
+          <span className="font-medium">
+            {info.plugAdapter.type} · {info.plugAdapter.voltage}/{info.plugAdapter.frequency}
+          </span>
           {info.plugAdapter.needsAdapter ? (
-            <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-400">
+            <span className="mt-0.5 block text-xs font-medium text-warning">
               {info.plugAdapter.adapterNote}
             </span>
           ) : (
-            <span className="mt-0.5 block text-xs text-muted-foreground">{t.noAdapter}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{t.infoNoAdapter}</span>
           )}
         </InfoRow>
 
-        {/* Visa */}
-        <InfoRow icon={ShieldCheck} label={t.visa}>
-          <span className="text-xs leading-relaxed">{info.visaNote}</span>
+        <InfoRow icon={ShieldCheck} label={t.infoVisa}>
+          <span className="text-xs leading-relaxed text-pretty">{info.visaNote}</span>
         </InfoRow>
 
-        {/* Safety */}
         {info.safetyNote && (
-          <InfoRow icon={AlertCircle} label={t.safety}>
-            <span className="text-xs leading-relaxed">{info.safetyNote}</span>
+          <InfoRow icon={AlertCircle} label={t.infoSafety}>
+            <span className="text-xs leading-relaxed text-pretty">{info.safetyNote}</span>
           </InfoRow>
         )}
 
-        {/* Emergency number */}
         {info.emergencyNumber && info.emergencyNumber !== '112' && (
-          <InfoRow icon={Phone} label={t.emergency}>
+          <InfoRow icon={Phone} label={t.infoEmergency}>
             <span className="font-mono text-sm font-bold">{info.emergencyNumber}</span>
           </InfoRow>
         )}
 
-        {/* Baggage (AI-resolved) */}
-        {info.baggageInfo && (
-          <InfoRow icon={Luggage} label={t.baggage}>
-            {info.baggageInfo.airline && (
-              <span className="font-medium">{info.baggageInfo.airline}</span>
-            )}
+        {info.baggageInfo?.airline && (
+          <InfoRow icon={Luggage} label={t.infoBaggage}>
+            <span className="font-medium">{info.baggageInfo.airline}</span>
             {info.baggageInfo.cabinSize && (
               <span className="mt-0.5 block text-xs text-muted-foreground">
-                {lang === 'sk' ? 'Kabína:' : 'Cabin:'} {info.baggageInfo.cabinSize}
-                {info.baggageInfo.cabinWeightKg ? ` · max. ${info.baggageInfo.cabinWeightKg} kg` : ''}
-              </span>
-            )}
-            {info.baggageInfo.checkedWeightKg != null && (
-              <span className="block text-xs text-muted-foreground">
-                {lang === 'sk' ? 'Odbavená:' : 'Checked:'} max. {info.baggageInfo.checkedWeightKg} kg
-              </span>
-            )}
-            {info.baggageInfo.priorityNote && (
-              <span className="block text-xs italic text-muted-foreground">{info.baggageInfo.priorityNote}</span>
-            )}
-            {info.baggageInfo.confidence !== 'high' && (
-              <span className="mt-0.5 block text-[10px] text-amber-600">
-                ({info.baggageInfo.confidence === 'low' ? t.confidenceLow : t.confidenceMed})
+                {info.baggageInfo.cabinSize}
+                {info.baggageInfo.cabinWeightKg ? ` · ${info.baggageInfo.cabinWeightKg} kg` : ''}
               </span>
             )}
           </InfoRow>
         )}
       </div>
 
-      {/* Health tips */}
-      {info.healthTips && info.healthTips.length > 0 && (
-        <div className="mt-1 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <HeartPulse className="size-3.5 text-rose-500" aria-hidden="true" />
-            {t.health}
-          </div>
-          <ul className="ml-5 flex flex-col gap-0.5">
-            {info.healthTips.map((tip, i) => (
-              <li key={i} className="text-xs text-muted-foreground list-disc">{tip}</li>
-            ))}
-          </ul>
-        </div>
+      {!!info.healthTips?.length && (
+        <TipList icon={HeartPulse} tone="text-coral" label={t.infoHealth} tips={info.healthTips} />
       )}
-
-      {/* Local tips */}
-      {info.localTips && info.localTips.length > 0 && (
-        <div className="mt-1 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Lightbulb className="size-3.5 text-amber-500" aria-hidden="true" />
-            {t.tips}
-          </div>
-          <ul className="ml-5 flex flex-col gap-0.5">
-            {info.localTips.map((tip, i) => (
-              <li key={i} className="text-xs text-muted-foreground list-disc">{tip}</li>
-            ))}
-          </ul>
-        </div>
+      {!!info.localTips?.length && (
+        <TipList icon={Lightbulb} tone="text-accent" label={t.infoTips} tips={info.localTips} />
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -165,14 +123,40 @@ function InfoRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 px-3 py-2.5">
+    <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 px-3 py-2.5">
       <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
       <div className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
+        <span className="eyebrow block text-muted-foreground">{label}</span>
         {children}
       </div>
+    </div>
+  )
+}
+
+function TipList({
+  icon: Icon,
+  tone,
+  label,
+  tips,
+}: {
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: 'true' }>
+  tone: string
+  label: string
+  tips: string[]
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="flex items-center gap-1.5 text-xs font-bold">
+        <Icon className={`size-3.5 ${tone}`} aria-hidden="true" />
+        {label}
+      </span>
+      <ul className="ml-5 flex list-disc flex-col gap-0.5">
+        {tips.map((tip, i) => (
+          <li key={i} className="text-xs text-muted-foreground text-pretty">
+            {tip}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -37,7 +37,7 @@ export async function fetchWeather(
 
   if (startOffset >= 0 && endOffset <= 15) {
     // Within forecast range
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=auto&start_date=${startDate}&end_date=${endDate}`
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code,wind_speed_10m_max&timezone=auto&start_date=${startDate}&end_date=${endDate}`
     const res = await fetch(url)
     if (!res.ok) throw new Error('Forecast failed')
     const data = await res.json()
@@ -48,13 +48,14 @@ export async function fetchWeather(
       tMin: d.temperature_2m_min[i],
       precipProb: d.precipitation_probability_max?.[i] ?? 0,
       code: d.weather_code?.[i] ?? 0,
+      windMax: d.wind_speed_10m_max?.[i],
     }))
   } else {
-    // Too far in the future — use historical data from last year as an estimate
+    // Too far in the future — use last year's archive as a seasonal estimate
     isEstimate = true
     const histStart = shiftYear(startDate, -1)
     const histEnd = shiftYear(endDate, -1)
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&timezone=auto&start_date=${histStart}&end_date=${histEnd}`
+    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,wind_speed_10m_max&timezone=auto&start_date=${histStart}&end_date=${histEnd}`
     const res = await fetch(url)
     if (!res.ok) throw new Error('Archive failed')
     const data = await res.json()
@@ -65,6 +66,7 @@ export async function fetchWeather(
       tMin: d.temperature_2m_min[i],
       precipProb: (d.precipitation_sum?.[i] ?? 0) > 1 ? 70 : 10,
       code: d.weather_code?.[i] ?? 0,
+      windMax: d.wind_speed_10m_max?.[i],
     }))
   }
 
@@ -76,6 +78,7 @@ export async function fetchWeather(
   const maxT = Math.max(...valid.map((d) => d.tMax))
   const minT = Math.min(...valid.map((d) => d.tMin))
   const rainyDays = valid.filter((d) => d.precipProb >= 50).length
+  const windyDays = valid.filter((d) => (d.windMax ?? 0) >= 35).length
 
   return {
     days: valid,
@@ -90,18 +93,29 @@ export async function fetchWeather(
     cold: avgMax < 10,
     freezing: minT <= 0,
     rainy: rainyDays >= Math.max(1, Math.ceil(valid.length * 0.3)),
+    windy: windyDays >= Math.max(1, Math.ceil(valid.length * 0.3)),
   }
 }
 
-export function weatherCodeInfo(code: number): { label: string; icon: string } {
-  if (code === 0) return { label: 'Jasno', icon: 'sun' }
-  if (code <= 2) return { label: 'Polojasno', icon: 'sun-cloud' }
-  if (code === 3) return { label: 'Zamračené', icon: 'cloud' }
-  if (code <= 48) return { label: 'Hmla', icon: 'fog' }
-  if (code <= 57) return { label: 'Mrholenie', icon: 'drizzle' }
-  if (code <= 67) return { label: 'Dážď', icon: 'rain' }
-  if (code <= 77) return { label: 'Sneženie', icon: 'snow' }
-  if (code <= 82) return { label: 'Prehánky', icon: 'rain' }
-  if (code <= 86) return { label: 'Snehové prehánky', icon: 'snow' }
-  return { label: 'Búrky', icon: 'storm' }
+export type WeatherIcon =
+  | 'sun'
+  | 'sun-cloud'
+  | 'cloud'
+  | 'fog'
+  | 'drizzle'
+  | 'rain'
+  | 'snow'
+  | 'storm'
+
+export function weatherCodeInfo(code: number): { label: string; labelEn: string; icon: WeatherIcon } {
+  if (code === 0) return { label: 'Jasno', labelEn: 'Clear', icon: 'sun' }
+  if (code <= 2) return { label: 'Polojasno', labelEn: 'Partly cloudy', icon: 'sun-cloud' }
+  if (code === 3) return { label: 'Zamračené', labelEn: 'Overcast', icon: 'cloud' }
+  if (code <= 48) return { label: 'Hmla', labelEn: 'Fog', icon: 'fog' }
+  if (code <= 57) return { label: 'Mrholenie', labelEn: 'Drizzle', icon: 'drizzle' }
+  if (code <= 67) return { label: 'Dážď', labelEn: 'Rain', icon: 'rain' }
+  if (code <= 77) return { label: 'Sneženie', labelEn: 'Snow', icon: 'snow' }
+  if (code <= 82) return { label: 'Prehánky', labelEn: 'Showers', icon: 'rain' }
+  if (code <= 86) return { label: 'Snehové prehánky', labelEn: 'Snow showers', icon: 'snow' }
+  return { label: 'Búrky', labelEn: 'Thunderstorms', icon: 'storm' }
 }

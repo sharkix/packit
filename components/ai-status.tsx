@@ -1,64 +1,63 @@
 'use client'
 
-import { Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Compass, Sparkles } from 'lucide-react'
+import { useLang } from '@/lib/i18n'
+import { cx } from './ui'
 
-type Status = 'idle' | 'loading' | 'done' | 'error'
+export type AiStatusValue = 'idle' | 'loading' | 'done' | 'error'
 
-const MESSAGES: Record<Status, string> = {
-  idle: '',
-  loading: 'AI analyzuje tvoju cestu a personalizuje zoznam…',
-  done: 'Zoznam personalizovaný pomocou AI',
-  error: 'AI personalizácia sa nepodarila. Základný zoznam je stále kompletný.',
-}
-
-const EN_MESSAGES: Record<Status, string> = {
-  idle: '',
-  loading: 'AI is analysing your trip and personalising the list…',
-  done: 'List personalised by AI',
-  error: 'AI personalisation failed. The base list is still complete.',
-}
-
-interface AiStatusProps {
-  status: Status
+export function AiStatus({
+  status,
+  reasoning,
+  strategy,
+  weatherNote,
+}: {
+  status: AiStatusValue
   reasoning?: string
+  strategy?: string
   weatherNote?: string
-  lang?: 'sk' | 'en'
-}
-
-export function AiStatus({ status, reasoning, weatherNote, lang = 'sk' }: AiStatusProps) {
+}) {
+  const { t } = useLang()
   if (status === 'idle') return null
 
-  const msgs = lang === 'en' ? EN_MESSAGES : MESSAGES
+  const tone =
+    status === 'loading'
+      ? 'border-primary/30 bg-primary/5 text-primary'
+      : status === 'done'
+        ? 'border-success/30 bg-success/8 text-success'
+        : 'border-destructive/30 bg-destructive/8 text-destructive'
+
+  const Icon = status === 'loading' ? Sparkles : status === 'done' ? CheckCircle2 : AlertCircle
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`rounded-xl border px-4 py-3 text-sm transition-all duration-300 ${
-        status === 'loading'
-          ? 'border-primary/30 bg-primary/5 text-primary'
-          : status === 'done'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border-red-200 bg-red-50 text-red-700'
-      }`}
+      className={cx('no-print rounded-2xl border px-4 py-3.5 text-sm', tone)}
     >
-      <div className="flex items-start gap-2">
-        {status === 'loading' && (
-          <Sparkles className="mt-0.5 size-4 shrink-0 animate-pulse" aria-hidden="true" />
-        )}
-        {status === 'done' && (
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        )}
-        {status === 'error' && (
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        )}
-        <div className="flex flex-col gap-1">
-          <span className="font-medium">{msgs[status]}</span>
+      <div className="flex items-start gap-2.5">
+        <Icon
+          className={cx('mt-0.5 size-4 shrink-0', status === 'loading' && 'animate-pulse')}
+          aria-hidden="true"
+        />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <span className="font-semibold">
+            {status === 'loading' ? t.aiStatusLoading : status === 'done' ? t.aiStatusDone : t.aiStatusError}
+          </span>
+          {status === 'done' && strategy && (
+            <p className="flex items-start gap-1.5 font-medium text-pretty">
+              <Compass className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-bold">{t.aiStrategy}: </span>
+                {strategy}
+              </span>
+            </p>
+          )}
           {status === 'done' && reasoning && (
-            <p className="text-emerald-700 leading-relaxed">{reasoning}</p>
+            <p className="leading-relaxed opacity-90 text-pretty">{reasoning}</p>
           )}
           {status === 'done' && weatherNote && (
-            <p className="mt-0.5 italic text-emerald-600">{weatherNote}</p>
+            <p className="italic opacity-80 text-pretty">{weatherNote}</p>
           )}
         </div>
       </div>
