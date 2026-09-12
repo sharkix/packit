@@ -1,5 +1,5 @@
-import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
+import { failureResponse, runStructured } from '@/lib/ai-model'
 import { describeTrip } from '@/lib/ai-context'
 import type { TripConfig } from '@/lib/types'
 
@@ -48,8 +48,7 @@ export async function POST(req: Request) {
       return out
     })
 
-    const { object } = await generateObject({
-      model: gateway('anthropic/claude-sonnet-5'),
+    const result = await runStructured('ai-itinerary', {
       schema: ItinerarySchema,
       temperature: 0.6,
       prompt: `Si skúsený cestovateľ, ktorý plánuje aktívne výlety. Navrhni realistický plán deň po dni.
@@ -68,9 +67,10 @@ PRAVIDLÁ:
 • Všetko po SLOVENSKY.`,
     })
 
-    return Response.json(object)
+    if (!result.ok) return failureResponse(result.failure)
+    return Response.json(result.object)
   } catch (err) {
     console.error('[ai-itinerary]', err)
-    return Response.json({ error: 'AI itinerary failed' }, { status: 500 })
+    return Response.json({ error: 'Bad request', reason: 'other' }, { status: 500 })
   }
 }

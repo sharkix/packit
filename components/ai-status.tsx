@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertCircle, CheckCircle2, Compass, Sparkles } from 'lucide-react'
+import { aiErrorMessage, type AiErrorReason } from '@/lib/ai-error'
 import { useLang } from '@/lib/i18n'
 import { cx } from './ui'
 
@@ -8,11 +9,13 @@ export type AiStatusValue = 'idle' | 'loading' | 'done' | 'error'
 
 export function AiStatus({
   status,
+  errorReason,
   reasoning,
   strategy,
   weatherNote,
 }: {
   status: AiStatusValue
+  errorReason?: AiErrorReason | null
   reasoning?: string
   strategy?: string
   weatherNote?: string
@@ -44,6 +47,9 @@ export function AiStatus({
           <span className="font-semibold">
             {status === 'loading' ? t.aiStatusLoading : status === 'done' ? t.aiStatusDone : t.aiStatusError}
           </span>
+          {status === 'error' && errorReason && errorReason !== 'other' && (
+            <p className="leading-relaxed text-pretty">{aiErrorMessage(errorReason, t)}</p>
+          )}
           {status === 'done' && strategy && (
             <p className="flex items-start gap-1.5 font-medium text-pretty">
               <Compass className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />

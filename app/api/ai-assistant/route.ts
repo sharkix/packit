@@ -1,5 +1,5 @@
-import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
+import { failureResponse, runStructured } from '@/lib/ai-model'
 import { CATEGORY_ENUM, PACKING_PRINCIPLES, describeList, describeTrip } from '@/lib/ai-context'
 import type { ChatMessage, PackItem, TripConfig } from '@/lib/types'
 
@@ -75,16 +75,16 @@ Ako odpovedať:
 • Ak je batožina už plná, nepridávaj bez toho, aby si povedal, čo za to vypadne.
 • Buď stručný a vecný. Žiadne zoznamy klišé. Po SLOVENSKY.`
 
-    const { object } = await generateObject({
-      model: gateway('anthropic/claude-sonnet-5'),
+    const result = await runStructured('ai-assistant', {
       schema: AssistantSchema,
       prompt,
       temperature: 0.5,
     })
 
-    return Response.json(object)
+    if (!result.ok) return failureResponse(result.failure)
+    return Response.json(result.object)
   } catch (err) {
     console.error('[ai-assistant]', err)
-    return Response.json({ error: 'AI assistant failed' }, { status: 500 })
+    return Response.json({ error: 'Bad request', reason: 'other' }, { status: 500 })
   }
 }

@@ -1,5 +1,5 @@
-import { gateway, generateObject } from 'ai'
 import { z } from 'zod'
+import { failureResponse, runStructured } from '@/lib/ai-model'
 
 export const maxDuration = 30
 
@@ -81,16 +81,16 @@ export async function POST(req: Request) {
   try {
     const body: LookupRequest = await req.json()
 
-    const { object } = await generateObject({
-      model: gateway('anthropic/claude-sonnet-5'),
+    const result = await runStructured('ai-lookup', {
       schema: CountryInfoSchema,
       prompt: buildPrompt(body),
       temperature: 0.2,
     })
 
-    return Response.json(object)
+    if (!result.ok) return failureResponse(result.failure)
+    return Response.json(result.object)
   } catch (err) {
     console.error('[ai-lookup]', err)
-    return Response.json({ error: 'AI lookup failed' }, { status: 500 })
+    return Response.json({ error: 'Bad request', reason: 'other' }, { status: 500 })
   }
 }

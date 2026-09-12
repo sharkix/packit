@@ -15,6 +15,7 @@ import type { AiItineraryResult } from '@/app/api/ai-itinerary/route'
 import type { TripConfig } from '@/lib/types'
 import { useLang } from '@/lib/i18n'
 import { weatherCodeInfo } from '@/lib/weather'
+import { aiErrorMessage, readAiError, type AiErrorReason } from '@/lib/ai-error'
 import { Card, Eyebrow, cx } from './ui'
 
 const INTENSITY_TONE: Record<string, string> = {
@@ -27,24 +28,27 @@ export function DayPlan({ cfg }: { cfg: TripConfig }) {
   const { t, locale, lang } = useLang()
   const [plan, setPlan] = useState<AiItineraryResult | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<AiErrorReason | null>(null)
   const [activeDay, setActiveDay] = useState(0)
 
   async function generate() {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       const res = await fetch('/api/ai-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cfg),
       })
-      if (!res.ok) throw new Error('itinerary failed')
+      if (!res.ok) {
+        setError(await readAiError(res))
+        return
+      }
       const data: AiItineraryResult = await res.json()
       setPlan(data)
       setActiveDay(0)
     } catch {
-      setError(true)
+      setError('other')
     } finally {
       setLoading(false)
     }
@@ -79,7 +83,9 @@ export function DayPlan({ cfg }: { cfg: TripConfig }) {
       {error && (
         <p className="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-          {t.dayPlanError}
+          <span className="min-w-0 text-pretty">
+            {error === 'other' ? t.dayPlanError : aiErrorMessage(error, t)}
+          </span>
         </p>
       )}
 
